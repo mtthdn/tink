@@ -150,23 +150,24 @@ export function matchArchetype(unificationResult) {
     }
   }
 
-  // Sort by ratio desc, then tier rarity
+  // Sort by specificity-weighted score desc, then tier rarity
   const tierOrder = { mythic: 0, rare: 1, uncommon: 2, common: 3 };
   candidates.sort((a, b) => {
-    if (b.ratio !== a.ratio) return b.ratio - a.ratio;
+    if (b.score !== a.score) return b.score - a.score;
     return (tierOrder[a.tier] ?? 4) - (tierOrder[b.tier] ?? 4);
   });
 
   const best = candidates[0] || null;
   return {
     match: best ? { name: best.name, tier: best.tier, flavor: best.flavor } : null,
-    score: best ? { matched: best.matched, total: best.total, ratio: best.ratio } : null,
+    score: best ? { matched: best.matched, total: best.total, ratio: best.ratio, score: best.score } : null,
     candidates: candidates.map((c) => ({
       name: c.name,
       tier: c.tier,
       matched: c.matched,
       total: c.total,
       ratio: c.ratio,
+      score: c.score,
     })),
   };
 }
@@ -188,7 +189,11 @@ function scoreMatch(flat, archetype, conflicts) {
     }
   }
 
-  return { matched, total, ratio: total > 0 ? matched / total : 0 };
+  const ratio = total > 0 ? matched / total : 0;
+  // Specificity bonus: more required traits = higher score when ratio is similar
+  // A 3/3 match (score=3.3) beats a 2/2 match (score=2.2)
+  const score = ratio * (total + total * 0.1);
+  return { matched, total, ratio, score };
 }
 
 export function getCatalog() {

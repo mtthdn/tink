@@ -146,6 +146,43 @@ section("Number merging");
   ok(r.unified.charge?.conflicted, "Conflicted number marked");
 }
 
+// ═══ Archetype: specificity weighting ═══
+section("Archetype: specificity weighting");
+{
+  // Aurora (2 traits: bright+cold, uncommon) and Quiet Resolve
+  // (3 traits: emotional+persistent+calm, common) both match at 100%.
+  // Without specificity, ratio ties at 1.0 and tier tiebreak picks Aurora (uncommon > common).
+  // With specificity, Quiet Resolve should win because 3 matching traits > 2.
+  const r = unify(
+    { bright: true, cold: true, emotional: true },
+    { persistent: true, calm: true }
+  );
+  const m = matchArchetype(r);
+  ok(m.match !== null, "Found a match");
+  eq(m.match?.name, "Quiet Resolve",
+    "Specificity: 3-trait Quiet Resolve beats 2-trait Aurora");
+}
+{
+  // A thread combo that matches Heartstring (2 traits: emotional+organic, common) AND
+  // Vendetta Engine (3 traits: emotional+mechanical+persistent, rare).
+  // Vendetta should win on both specificity and tier.
+  const r = unify(
+    { emotional: true, mechanical: true, persistent: true },
+    { organic: true, emotional: true }
+  );
+  const m = matchArchetype(r);
+  ok(m.match !== null, "Found a match");
+  eq(m.match?.name, "Vendetta Engine",
+    "Specificity: 3-trait Vendetta Engine beats 2-trait Heartstring");
+}
+{
+  // Verify a full 2-trait match still works when it's the only candidate
+  const r = unify({ bright: true, cold: true }, { bright: true });
+  const m = matchArchetype(r);
+  eq(m.match?.name, "Aurora", "Aurora still wins with 2/2 perfect match");
+  ok(m.candidates.length > 0, "Has candidates");
+}
+
 // ═══ Summary ═══
 console.log(`\n${B}\u2500\u2500 Results \u2500\u2500${D}`);
 console.log(`  Total:  ${total}`);
