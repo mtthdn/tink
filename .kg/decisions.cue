@@ -71,3 +71,75 @@ d004: core.#Decision & {
 	appliesTo: [{"@id": "https://rfam.cc/tink"}]
 	related: {"ADR-001": true}
 }
+
+d005: core.#Decision & {
+	id:      "ADR-005"
+	title:   "Cascade mechanic: archetype outputs inject traits into neighboring unresolved crossings"
+	status:  "proposed"
+	date:    "2026-02-15"
+	context: "Current prototype resolves each crossing independently. But the 'scream moment' in cascade games (LBaL, Balatro, Noita) comes from chain reactions where one outcome feeds into the next. Without cascading, the Activate phase is N independent evaluations rather than one connected sequence."
+	decision: "When a crossing resolves and matches an archetype, the archetype emits 'cascade traits' that are injected into adjacent crossings that haven't resolved yet. These bonus traits can change what archetype the downstream crossing matches, creating chain reactions."
+	rationale: "This creates the exponential chain feeling. Placing thread A next to thread B next to thread C becomes a deliberate pipeline: A×B produces archetype X which emits trait Z which makes B×C match archetype Y instead of archetype W. The spatial layout of the loom becomes a program."
+	consequences: [
+		"Activation order (center→outward) becomes a critical design element — players plan cascade direction",
+		"Each archetype needs a 'cascade output' field — what traits it emits when it resolves",
+		"Balance: cascade traits should be weaker than thread traits (partial injection, not full override)",
+		"Visual: cascade needs distinct animation — trait flowing along connection lines from resolved to unresolved",
+	]
+	appliesTo: [{"@id": "https://rfam.cc/tink"}]
+	related: {"ADR-001": true, "ADR-003": true}
+}
+
+d006: core.#Decision & {
+	id:      "ADR-006"
+	title:   "Loom grows during a run — 3 to 7 to 12 to 19 cells as progression"
+	status:  "proposed"
+	date:    "2026-02-15"
+	context: "Fixed-size looms limit the complexity arc of a run. Early game should be simple (learn mechanics with 1-2 crossings). Late game should be complex (chain reactions across many crossings). Games like Slay the Spire, TFT, and Balatro all expand the player's composition space over a run."
+	decision: "Start each run with a 3-cell loom (center + 2 adjacent). Expand to 7 (full inner ring), then 12, then 19 (two full rings) via specific archetype rewards or Wander-phase milestones. Players choose WHERE to add new cells, creating loom shape as expression."
+	rationale: "Progressive loom expansion serves multiple purposes: tutorials the mechanic gently, creates milestone rewards that feel powerful, and makes late-game cascade chains possible without overwhelming early game. The choice of where to add cells adds a spatial strategy layer."
+	consequences: [
+		"Need a cell-addition UI/mechanic during Weave phase",
+		"Early archetypes should be achievable with 1-2 crossings",
+		"Late-game archetypes can require chain cascades that need 4+ crossings",
+		"Loom shape becomes part of build identity",
+	]
+	appliesTo: [{"@id": "https://rfam.cc/tink"}]
+	related: {"ADR-003": true}
+}
+
+d007: core.#Decision & {
+	id:      "ADR-007"
+	title:   "Run structure: roguelike with persistent codex"
+	status:  "proposed"
+	date:    "2026-02-15"
+	context: "The game needs both within-run progression (loom growth, thread collection) and cross-run progression (knowledge accumulation). Roguelike structure provides replayability through varied thread draws. Persistent codex provides the hidden graph discovery content."
+	decision: "Each run is a self-contained sequence of Wander-Weave-Activate cycles ending in success or failure. Between runs, the codex persists: discovered archetypes, thread descriptions, hints collected. New runs offer different thread draws but the player's KNOWLEDGE carries over."
+	rationale: "Outer Wilds demonstrates that knowledge-as-progression is deeply satisfying. The first time you discover Paradox Bloom is magic. The second time, you know how to build toward it deliberately. The codex turns random experimentation into purposeful engineering across runs."
+	consequences: [
+		"Need a codex UI that records: discovered archetypes, their required traits, their cascade outputs",
+		"First discovery of an archetype should be a special moment (animation, sound, codex entry unlocks)",
+		"Run success/failure condition needs design: what is the win state? Threat to survive? Score to hit?",
+		"Difficulty scaling across runs: ascension-style modifiers, harder thread draws, aggressive world",
+	]
+	appliesTo: [{"@id": "https://rfam.cc/tink"}]
+	related: {"ADR-003": true, "ADR-004": true}
+}
+
+d008: core.#Decision & {
+	id:      "ADR-008"
+	title:   "Technology: HTML5 Canvas plus D3.js, single-file deployable"
+	status:  "proposed"
+	date:    "2026-02-15"
+	context: "We have 9 proven HTML games in fing-mod/web-games (up to 991KB single-file). We have D3.js viz infrastructure in quicue.ca and CJLQ. We deploy static files to Caddy on container 612. The prototype is plain Node.js ES modules."
+	decision: "Build the visual game as a single HTML file with embedded JS (like fing-mod games). Use Canvas for the loom rendering and animations, D3.js for data-driven transitions if needed. No build step, no dependencies beyond CDN libs."
+	rationale: "Single-file HTML games deploy trivially (scp to Caddy), work offline, are shareable as downloads, and have proven viable at complex game scale (Loop Hero clone was 991KB). Canvas provides the animation performance needed for cascade visualization. Caddy MIME type issues with external .js files make inlined scripts more reliable."
+	consequences: [
+		"All game code lives in one HTML file (or a small set of inlined files)",
+		"Canvas for loom/animation, DOM for UI/menus/codex",
+		"CDN for D3.js, everything else self-contained",
+		"Deploy via existing deploy.sh pattern to quique.ca or rfam.cc",
+	]
+	appliesTo: [{"@id": "https://rfam.cc/tink"}]
+	related: {"ADR-003": true}
+}

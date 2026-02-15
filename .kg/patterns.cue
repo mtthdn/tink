@@ -46,3 +46,69 @@ p004: core.#Pattern & {
 	used_in: {"tink": true}
 	related: {"weave-and-watch": true, "archetype-discovery": true}
 }
+
+p005: core.#Pattern & {
+	name:     "cascade-chaining"
+	category: "game-mechanic"
+	problem:  "Independent crossing resolution produces flat, predictable Activate phases — no exponential growth or surprise cascades"
+	solution: "When a crossing resolves to an archetype, it emits cascade traits that inject into adjacent unresolved crossings, potentially changing their outcome. Resolution order (center outward) becomes a design axis. Players plan thread placement to create deliberate cascade pipelines."
+	context:  "Balatro Joker chains, LBaL symbol triggers, Noita spell modifiers all create exponential cascade feelings. The 'scream moment' comes from unexpected chain depth. Tink needs this to make the Activate phase dramatic rather than a static report."
+	example:  "Center crossing: Grudge+Clockwork -> Vendetta Engine (emits {persistent, sharp}). Adjacent crossing was Ember+Joy, would normally match Euphoria Cascade. But injected {persistent} tips it to match Anima instead. Player gasps."
+	used_in: {"tink": true}
+	related: {"weave-and-watch": true, "tension-spectrum": true}
+}
+
+p006: core.#Pattern & {
+	name:     "knowledge-as-progression"
+	category: "meta-game"
+	problem:  "Traditional roguelike progression uses unlockable items/characters. This gates content behind time rather than skill."
+	solution: "The only cross-run persistent state is the player's codex of discovered archetypes and collected hints. The player gets stronger across runs because they KNOW MORE, not because they have more stuff. First discovery is magic, subsequent ones are mastery."
+	context:  "Outer Wilds: entire game progression is knowledge. Return of the Obra Dinn: the logbook IS the game. Cultist Simulator: discovering combinations IS the content. This pattern creates a unique satisfaction: you can't lose what you've learned."
+	example:  "Run 1: accidentally discover Aurora (bright+cold). Run 2: deliberately build toward Aurora because you know the recipe. Run 5: engineer a cascade that chains Aurora into Bifrost Shard because you've learned both archetypes."
+	used_in: {"tink": true}
+	related: {"progressive-revelation": true}
+}
+
+p007: core.#Pattern & {
+	name:     "loom-as-program"
+	category: "game-mechanic"
+	problem:  "Spatial placement on the loom could feel arbitrary if position doesn't meaningfully affect outcomes"
+	solution: "The loom resolves center-outward, making thread position equivalent to instruction order in a program. Center threads are 'first executed', edge threads are 'last executed'. Cascade traits flow outward, so the center crossing's output shapes what the ring crossings produce. Thread placement becomes programming."
+	context:  "Opus Magnum: spatial arrangement IS the program. Noita: wand slot order IS the spell program. Factorio: conveyor layout IS the production program. When spatial arrangement determines execution, the player's loom IS their strategy made physical."
+	example:  "Player places a tension-producing thread pair at center (risky, powerful output). Ring threads are positioned to catch cascade traits from center, creating a pipeline. Loom shape: star pattern vs. chain pattern vs. cluster pattern each produce different cascade behaviors."
+	used_in: {"tink": true}
+	related: {"cascade-chaining": true, "weave-and-watch": true}
+}
+
+p008: core.#Pattern & {
+	name:     "win-state-as-weaving-goal"
+	category: "game-loop"
+	problem:  "The game needs a win/loss condition to create tension but the core loop is creative/expressive — harsh failure would undermine the craft feeling"
+	solution: "Each run has a 'pattern to weave' — a target tapestry shape or archetype combination. Wander discovers what the target is (gradually revealed). Weave and Activate are the player's attempt to produce it. Failure means the tapestry frays (partial success, some progress saved) rather than total loss."
+	context:  "Slay the Spire: kill the boss. Balatro: beat the blind score. LBaL: pay the rent. The win condition creates urgency that makes choices meaningful. Without it, building is pleasant but inconsequential. With harsh failure, building feels punished."
+	example:  "This run's pattern: produce a legendary archetype that requires a 3-crossing chain. You have 5 Wander-Weave-Activate cycles to find the right threads and engineer the chain. Each cycle gets you closer or reveals the pattern is harder than expected."
+	used_in: {"tink": true}
+	related: {"weave-and-watch": true, "knowledge-as-progression": true}
+}
+
+p009: core.#Pattern & {
+	name:     "node-map-exploration"
+	category: "game-loop"
+	problem:  "The Wander phase needs structure that creates meaningful route decisions without full dungeon exploration overhead"
+	solution: "Use a node-map (Slay the Spire style): 5-7 columns, 3-5 nodes per column, no crossing paths. Node types (Thread Cluster, Clue Shrine, Echo Chamber, Hazard, Rest) are visible; contents are partially hidden via three-tier visibility (type icon + region tint + adjacent preview). Fan-out toward themed endpoints rather than converging to a boss."
+	context:  "Slay the Spire's 7x15 grid with no-cross paths, Hades' door reward preview icons, FTL's partial beacon visibility, Inscryption's fixed icon vocabulary. Node-maps are faster than room exploration and let the spatial puzzle live in the Weave phase where it belongs."
+	example:  "Player sees 3 paths from column 2: left path has blue-tinted Thread Cluster (probably cold/liquid threads), center has a Clue Shrine (archetype hint), right has a Hazard node (risky but rare threads). Player chooses based on what they plan to weave."
+	used_in: {"tink": true}
+	related: {"weave-and-watch": true, "progressive-revelation": true}
+}
+
+p010: core.#Pattern & {
+	name:     "tapestry-resonance"
+	category: "meta-game"
+	problem:  "The procedural world feels disconnected from the player's weaving choices — Wander outputs don't reflect Activate inputs"
+	solution: "Track a run-level resonance: weighted sum of all archetype trait signatures produced so far. Aligned Wander regions become easier (more nodes, better threads). Opposed regions become harder but offer rarer threads. At extreme resonance (>0.9 in any trait), a Breach node appears. The world leans toward responding to the tapestry with 20-30% weight shifts, preserving surprise."
+	context:  "Loop Hero: tile placement IS world building, tile synergies create feedback loops. Hades: meta-progression changes future runs. The feedback loop (weave choices → world changes → new threads → new weave choices) creates naturally themed runs without forcing paths."
+	example:  "Player has woven 3 fire archetypes. The Forge region gains extra nodes and better thread quality. The Shallows (cold/liquid) becomes sparser but its threads are now rare-tier. A Breach node appears in The Forge offering paradox-tier fire threads."
+	used_in: {"tink": true}
+	related: {"weave-and-watch": true, "win-state-as-weaving-goal": true}
+}

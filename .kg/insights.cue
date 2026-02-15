@@ -140,3 +140,264 @@ i007: core.#Insight & {
 		"Export loom state as JSON-LD for visualization with existing D3.js infrastructure",
 	]
 }
+
+i008: core.#Insight & {
+	id:         "INSIGHT-008"
+	statement:  "Archetype matching needs specificity weighting — generalist archetypes dominate when threads share traits"
+	evidence: [
+		"Prototype demo: cold/emotional-heavy draw produced Bifrost Shard on 3 of 6 crossings",
+		"Bifrost Shard requires {bright, vast, cold} — common traits that appear on many threads",
+		"Vendetta Engine requires {emotional, mechanical, persistent} — more specific, matched less often",
+		"With flat scoring, a 2-trait archetype with 100% match outranks a 4-trait archetype with 75% match",
+	]
+	method:     "experiment"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Archetypes requiring more traits should score higher per-match to reward complex compositions. A 3/3 match on a rare archetype should outrank a 2/2 match on a common one. This is the 'specificity' principle from CSS — more specific selectors win."
+	action_items: [
+		"Add specificity bonus: score = (matched/total) * (1 + 0.1 * total) or similar",
+		"Alternatively: archetype tier acts as tiebreaker (mythic > rare > uncommon > common)",
+		"Test with varied thread draws to confirm diverse archetype production",
+	]
+}
+
+i009: core.#Insight & {
+	id:         "INSIGHT-009"
+	statement:  "Single-trait conflicts should be tension, not paradox — paradox requires multiple contradictions"
+	evidence: [
+		"Prototype: {element: 'fire'} & {element: 'water'} was 1/1 = 100% conflict → classified as paradox",
+		"A single disagreement feels like 'tension' not 'reality breaking'",
+		"Fixed by requiring conflicts.length >= 2 for paradox classification",
+		"This makes paradox genuinely rare and dramatic — you need to deliberately stack contradictions",
+	]
+	method:     "experiment"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "The paradox threshold (>50% AND >=2 conflicts) is a critical balance lever. It ensures paradox is earned through deliberate risk-taking, not triggered by trivial single-key overlaps. The rarity of paradox makes paradox-dependent archetypes (Paradox Bloom, Schrodinger's Thread) genuinely exciting to achieve."
+	action_items: [
+		"Monitor paradox frequency across varied draws — should be rare (1 in 5-10 activations)",
+		"Consider making paradox threshold configurable as a difficulty knob",
+	]
+}
+
+i010: core.#Insight & {
+	id:         "INSIGHT-010"
+	statement:  "The trait vocabulary needs orthogonal dimensions — too much overlap produces boring uniformity"
+	evidence: [
+		"Current traits: hot/cold/bright/volatile/persistent/ephemeral/calm/vast/sharp/liquid/organic/mechanical/emotional",
+		"Several threads share 3+ traits, producing similar unified results",
+		"Emotional threads all share 'emotional: true' making them semi-interchangeable",
+		"Physical traits (hot/cold/bright) appear across many threads",
+	]
+	method:     "experiment"
+	confidence: "medium"
+	discovered: "2026-02-15"
+	implication: "Traits should be organized into orthogonal dimensions so different thread categories contribute different axes. Consider: physical (hot/cold/liquid/solid), temporal (persistent/ephemeral/cyclical), agency (calm/volatile/driven), scale (vast/intimate/focused), domain (organic/mechanical/elemental/emotional). Each thread draws from 2-3 dimensions, ensuring diverse crossings."
+	action_items: [
+		"Map current trait vocabulary onto orthogonal dimensions",
+		"Ensure each archetype requires traits from at least 2 different dimensions",
+		"Consider adding dimensional traits: cyclical, intimate, focused, driven, elemental",
+		"Research: how does Pokemon's 18-type system maintain diversity? (partial answer: dual-typing)",
+	]
+}
+
+i011: core.#Insight & {
+	id:         "INSIGHT-011"
+	statement:  "Cascading crossings (where output of one crossing affects inputs of the next) are the path to the scream moment"
+	evidence: [
+		"Current prototype resolves crossings independently — no chaining",
+		"Luck Be a Landlord: symbol A triggers symbol B which triggers symbol C = cascade",
+		"Balatro: Joker multiplies chip count which feeds into next Joker = exponential chain",
+		"Noita: spell modifier affects spell which triggers next spell = program execution",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "The Activate phase needs crossing-to-crossing cascading. When a crossing produces an archetype, it should emit traits or effects that modify adjacent crossings before they resolve. This creates the exponential chain feeling. Design question: does a crossing add traits to neighboring threads, or does it spawn a new temporary 'phantom thread' at its position?"
+	action_items: [
+		"Design cascade mechanic: archetype outputs modify downstream crossings",
+		"Prototype: crossing produces temporary trait injection into adjacent unresolved crossings",
+		"The cascade order (center→outward) becomes critically important for chain design",
+		"Balance: cascades should be possible but not automatic — require deliberate thread placement",
+	]
+}
+
+i012: core.#Insight & {
+	id:         "INSIGHT-012"
+	statement:  "The loom should grow over a run — start small (3 cells), expand as you progress"
+	evidence: [
+		"Slay the Spire: deck starts small (10 cards) and grows, creating escalating complexity",
+		"TFT: team size expands with level (1→9 slots), gating composition complexity",
+		"Balatro: Joker slots start at 5, can be expanded with vouchers",
+		"Current prototype uses fixed 7-cell hex — no progression in board size",
+	]
+	method:     "cross_reference"
+	confidence: "medium"
+	discovered: "2026-02-15"
+	implication: "Early game: 3-cell loom (center + 2 slots). Only 1-2 crossings possible. Teaches the mechanic gently. Mid game: expand to 7 cells (full hex). Complex crossings, chain reactions possible. Late game: 19-cell hex (2 rings) or custom loom shapes. Loom expansion is itself a reward and a progression milestone."
+	action_items: [
+		"Design loom sizes: 3 → 7 → 12 → 19 cells as progression tiers",
+		"Loom expansion could be an archetype reward ('this crossing builds a new cell')",
+		"Custom loom shapes as late-game expression (player chooses where to add cells)",
+	]
+}
+
+i013: core.#Insight & {
+	id:         "INSIGHT-013"
+	statement:  "Sequential visible resolution with running accumulation is the key to making engines feel watchable"
+	evidence: [
+		"Balatro: each card steps forward, chips/mult counters update in real-time, mult counter catches fire at high values",
+		"LBaL: symbols highlight as they process, coin counter ticks up, spatial resolution order (top→bottom, left→right) gives a readable flow",
+		"Noita: wand execution resolves left-to-right, each spell visibly fires before the next",
+		"All three games: the player can trace cause→effect at each step of the cascade",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Tink's Activate phase must resolve crossings sequentially with visible accumulation. Energy flows from center outward, each crossing lights up, unified traits flash, archetype match appears, cascade traits emit visibly along connection lines to adjacent unresolved crossings. The player should be able to pause mentally at any step and trace the causal chain."
+	action_items: [
+		"Design activation animation: energy pulse travels along thread connections",
+		"Each crossing shows: trait merge → archetype match → cascade emission as distinct visual beats",
+		"Running state display: show which archetypes have been produced so far during activation",
+	]
+}
+
+i014: core.#Insight & {
+	id:         "INSIGHT-014"
+	statement:  "Multiplicative compounding creates the scream moment — additive effects alone produce flat emotional curves"
+	evidence: [
+		"Balatro: xMult Jokers compound (x2 then x3 = x6), Blueprint copies xMult Joker creating x16 from x4",
+		"LBaL: Bee gives 2x to adjacent Flower, three Bees = 8x, compounds across multiple Flowers",
+		"Both games: the scream moment is when multiplicative effects exceed linear mental arithmetic by an order of magnitude",
+		"Noita: wrapping + Chainsaw zero-delay creates infinite spell engines — multiplicative in time dimension",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Tink's cascade traits should be multiplicative: an archetype's cascade output should amplify downstream crossings, not just add to them. Resonance crossings that amplify shared traits should compound — two resonance crossings in a chain should produce dramatically more than the sum of their parts."
+	action_items: [
+		"Design cascade trait injection as amplification (boost matching traits) not just addition",
+		"Test: can two resonance crossings in sequence produce exponential-feeling results?",
+		"Balance: multiplicative compounding must be gated by spatial planning difficulty",
+	]
+}
+
+i015: core.#Insight & {
+	id:         "INSIGHT-015"
+	statement:  "Component ordering in a pipeline creates the deepest strategic layer — position IS the strategy"
+	evidence: [
+		"Balatro: Joker position matters enormously — +Mult before xMult is strictly better than the reverse",
+		"LBaL: symbol adjacency determines which interactions fire — moving one symbol changes everything",
+		"Noita: spell order on wand determines execution — modifiers before multicasts apply to all projectiles",
+		"All three: the player physically arranges components in space, and arrangement determines outcome",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Tink's center-outward resolution order means center placement IS the most important strategic decision. Threads at center resolve first and their cascade output shapes the ring. The loom-as-program pattern (p007) is validated: spatial arrangement is literally instruction order. This should be made explicit in the UI — show resolution order numbers on cells."
+	action_items: [
+		"Show activation order numbers on loom cells during Weave phase",
+		"Design 'order preview' showing which crossings resolve when",
+		"Consider allowing the player to choose resolution direction (not just center-outward)",
+	]
+}
+
+i016: core.#Insight & {
+	id:         "INSIGHT-016"
+	statement:  "The engine can backfire — risk of self-destruction makes building thrilling rather than merely optimizable"
+	evidence: [
+		"Noita: wands can kill the player — explosions damage you, fire spreads to your position",
+		"LBaL: Void symbol self-destructs paying 8 coins if no adjacent empties; over-optimizing board removes escape valves",
+		"Balatro: Glass Cards have a 1 in 4 chance of breaking after scoring — xMult power at risk of permanent loss",
+		"Vampire Survivors: Death at minute 30 forces run end regardless of power — the clock IS the backfire",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Paradox cascades should be able to destroy threads, change thread natures unpredictably, or produce negative archetypes. The player who courts paradox gains the most powerful outcomes but risks loom destruction. The visual should be dramatic: threads burning, archetypes destabilizing, then sometimes what emerges from chaos is more powerful than what was built deliberately."
+	action_items: [
+		"Implement paradox cascade destruction: chance to destroy adjacent threads based on paradox depth",
+		"Design 'phoenix' mechanic: destroyed threads can leave residual traits that modify replacement threads",
+		"Balance: paradox destruction should be possible but not automatic — give the player agency in risk management",
+	]
+}
+
+i017: core.#Insight & {
+	id:         "INSIGHT-017"
+	statement:  "Escalating audiovisual feedback proportional to cascade depth is non-negotiable for the scream moment"
+	evidence: [
+		"Balatro: mult counter catches fire, screen shake intensifies, sound effects escalate with each contribution",
+		"Vampire Survivors: screen density IS the power meter — late game is 90% your projectiles, 10% enemies",
+		"LBaL: coin counter physically scrolls upward, large payouts produce proportionally larger numbers",
+		"Noita: particle density + sound layering = wand complexity readout",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Tink's activation visuals must escalate with cascade depth and tension level. Harmony = gentle glow + soft chime. Resonance = bright pulse + harmonic chord. Tension = crackling + dissonant tone + visible instability. Paradox = screen-wide effects + intense audio. Screen shake and color saturation as power indicators. A paradox-laden tapestry should feel almost uncomfortable to watch."
+	action_items: [
+		"Define 4-tier visual/audio escalation matching the tension spectrum",
+		"Screen shake intensity proportional to cascade chain length",
+		"Color saturation increases with tension level — paradox should push colors toward oversaturation",
+	]
+}
+
+i018: core.#Insight & {
+	id:         "INSIGHT-018"
+	statement:  "Thread drafting with a satchel limit turns collection into strategy — the constraint IS the decision"
+	evidence: [
+		"Slay the Spire: draft 1 of 3 cards after combat; skip option makes experienced players curate precisely",
+		"Binding of Isaac: item pool depletion prevents repetition; seeing an item removes it from the run pool",
+		"Cogmind: item orthogonality — good items have potential disadvantages, weak items have niche uses",
+		"FTL: limited cargo means choosing between fuel, missiles, and drone parts is the strategy layer",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Wander should offer 2-3 threads per node, player picks 1-2. Satchel limit of 5-7 threads per excursion prevents hoarding and forces draft decisions during Wander. What you DON'T take matters as much as what you do. Thread pool depletion within a Wander (no repeat offerings) creates natural variety."
+	action_items: [
+		"Implement satchel limit (5-7 threads per Wander excursion)",
+		"Pity mechanic: after 3 nodes with no Rare+ thread, next node guarantees one",
+		"Thread pool depletion within a single Wander — once offered, removed from generation pool",
+	]
+}
+
+i019: core.#Insight & {
+	id:         "INSIGHT-019"
+	statement:  "Wander regions should differ mechanically, not just statistically — each region changes HOW you explore"
+	evidence: [
+		"Hades: each biome changes how you play (wall slam in Tartarus, lava in Asphodel, armor in Elysium)",
+		"Dead Cells: concept graphs define level length, branching, density, pacing per biome",
+		"Loop Hero: tile synergies are hidden — players discover Mountain Peak, Blooming Meadow through experimentation",
+		"Risk of Rain: stages differ by enemy pool composition and terrain geometry",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Each Wander region needs a unique mechanical behavior beyond trait weights. The Shallows: paths disappear after one traversal (ephemeral). The Tangle: hidden nodes appear only after visiting prerequisite nodes. The Archive: thread natures visible before collection. The Breach: nodes shift after visits. Statistical differentiation alone produces same-feeling exploration."
+	action_items: [
+		"Define 5 Wander regions with distinct mechanical behaviors, not just trait distributions",
+		"Region trait weights should be 70/30 (suggestive, not deterministic) to preserve surprise",
+		"Tapestry resonance shifts region weights by 20-30% — aligned regions easier, opposed regions harder but rarer",
+	]
+}
+
+i020: core.#Insight & {
+	id:         "INSIGHT-020"
+	statement:  "The lever-pull transition from build to watch is the single most important UX moment — silence before impact"
+	evidence: [
+		"Balatro: score is NOT pre-calculated — you must play the hand to see the result, creating suspense",
+		"LBaL: the spin is irrevocable commitment — you set up the board, pull the lever, watch",
+		"Opus Magnum: pressing Play transforms editor into viewer — static construction gains physics",
+		"Peggle: drumroll-to-Ode-to-Joy — brief silence before impact creates contrast that sells the moment",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "When the player pulls the lever: (1) lock the loom — no more edits, (2) duck all audio for 300ms, (3) charge-up animation — energy gathers at loom center, (4) first crossing resolves with full impact. The build UI should dim/slide away. The silence frame is what makes the impact feel real. Build mode = calm, well-lit workspace. Activate mode = darker palette, threads glow, connections become organic/alive."
+	action_items: [
+		"Design lever-pull as 3-beat sequence: lock → silence → impact",
+		"Build UI dims/slides off-screen during Activate — distinct mode switch",
+		"Charge-up animation (0.5-1s) before first crossing resolves",
+	]
+}

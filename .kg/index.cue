@@ -11,6 +11,10 @@ _index: aggregate.#KGIndex & {
 		"ADR-002": d002
 		"ADR-003": d003
 		"ADR-004": d004
+		"ADR-005": d005
+		"ADR-006": d006
+		"ADR-007": d007
+		"ADR-008": d008
 	}
 
 	insights: {
@@ -21,6 +25,19 @@ _index: aggregate.#KGIndex & {
 		"INSIGHT-005": i005
 		"INSIGHT-006": i006
 		"INSIGHT-007": i007
+		"INSIGHT-008": i008
+		"INSIGHT-009": i009
+		"INSIGHT-010": i010
+		"INSIGHT-011": i011
+		"INSIGHT-012": i012
+		"INSIGHT-013": i013
+		"INSIGHT-014": i014
+		"INSIGHT-015": i015
+		"INSIGHT-016": i016
+		"INSIGHT-017": i017
+		"INSIGHT-018": i018
+		"INSIGHT-019": i019
+		"INSIGHT-020": i020
 	}
 
 	rejected: {
@@ -30,10 +47,16 @@ _index: aggregate.#KGIndex & {
 	}
 
 	patterns: {
-		"weave-and-watch":       p001
-		"trait-unification":     p002
-		"tension-spectrum":      p003
+		"weave-and-watch":        p001
+		"trait-unification":      p002
+		"tension-spectrum":       p003
 		"progressive-revelation": p004
+		"cascade-chaining":       p005
+		"knowledge-as-progression": p006
+		"loom-as-program":        p007
+		"win-state-as-weaving-goal": p008
+		"node-map-exploration":      p009
+		"tapestry-resonance":        p010
 	}
 }
 
