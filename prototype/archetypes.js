@@ -12,24 +12,28 @@ const CATALOG = [
     required: { bright: true, cold: true },
     tier: "uncommon",
     flavor: "Light bends through frozen air, painting impossible colors.",
+    cascade: { cold: true, bright: true },
   },
   {
     name: "Stormglass",
     required: { volatile: true, bright: true, liquid: true },
     tier: "rare",
     flavor: "A vessel of contained lightning, swirling and alive.",
+    cascade: { volatile: true, liquid: true },
   },
   {
     name: "Permafrost",
     required: { cold: true, persistent: true, vast: true },
     tier: "uncommon",
     flavor: "What freezes deep enough never thaws.",
+    cascade: { cold: true, persistent: true },
   },
   {
     name: "Wildfire",
     required: { hot: true, volatile: true, organic: true },
     tier: "uncommon",
     flavor: "It doesn't burn the forest. It becomes the forest.",
+    cascade: { hot: true, ephemeral: true },
   },
 
   // --- Emotional constructs ---
@@ -38,24 +42,28 @@ const CATALOG = [
     required: { emotional: true, mechanical: true, persistent: true },
     tier: "rare",
     flavor: "A grudge so precise it runs on clockwork.",
+    cascade: { persistent: true, sharp: true },
   },
   {
     name: "Euphoria Cascade",
     required: { emotional: true, bright: true, volatile: true },
     tier: "uncommon",
     flavor: "Joy so intense it becomes unstable.",
+    cascade: { bright: true, ephemeral: true },
   },
   {
     name: "Quiet Resolve",
     required: { emotional: true, persistent: true, calm: true },
     tier: "common",
     flavor: "Not loud. Not fast. But absolutely certain.",
+    cascade: { calm: true },
   },
   {
     name: "Heartstring",
     required: { emotional: true, organic: true },
     tier: "common",
     flavor: "A connection that pulses with something warm.",
+    cascade: { organic: true },
   },
 
   // --- Mythological archetypes ---
@@ -64,18 +72,21 @@ const CATALOG = [
     required: { persistent: true, vast: true, sharp: true },
     tier: "rare",
     flavor: "Fate is not a line. It is a net, and every knot remembers.",
+    cascade: { persistent: true, vast: true },
   },
   {
     name: "Anansi's Thread",
     required: { sharp: true, organic: true, ephemeral: true },
     tier: "rare",
     flavor: "The trickster's gift: a story that catches you before you catch it.",
+    cascade: { sharp: true, ephemeral: true },
   },
   {
     name: "Bifrost Shard",
     required: { bright: true, vast: true, cold: true },
     tier: "rare",
     flavor: "A fragment of the bridge between worlds, still humming.",
+    cascade: { bright: true, vast: true },
   },
 
   // --- Inventions ---
@@ -84,18 +95,21 @@ const CATALOG = [
     required: { mechanical: true, persistent: true },
     tier: "uncommon",
     flavor: "It shouldn't work. It does. Don't ask why.",
+    cascade: { mechanical: true },
   },
   {
     name: "Resonance Crystal",
     required: { bright: true, sharp: true, mechanical: true },
     tier: "uncommon",
     flavor: "Cut to a frequency that makes other things vibrate in sympathy.",
+    cascade: { bright: true, sharp: true },
   },
   {
     name: "Living Clockwork",
     required: { mechanical: true, organic: true, persistent: true },
     tier: "rare",
     flavor: "Gears that grow. Springs that breathe. Ticking that sounds like a heartbeat.",
+    cascade: { organic: true, mechanical: true },
   },
 
   // --- Paradox archetypes (require conflict) ---
@@ -104,18 +118,21 @@ const CATALOG = [
     required: { _minConflicts: 3 },
     tier: "mythic",
     flavor: "A flower that exists in the space between contradictions. It is beautiful and it should not be.",
+    cascade: { volatile: true, organic: true, emotional: true },
   },
   {
     name: "Schrodinger's Thread",
     required: { _minConflicts: 2, mechanical: true },
     tier: "rare",
     flavor: "Simultaneously wound and unwound until observed.",
+    cascade: { mechanical: true, ephemeral: true },
   },
   {
     name: "Oxymoron Engine",
     required: { _minConflicts: 2, persistent: true },
     tier: "rare",
     flavor: "Runs on impossibility. The more it contradicts, the harder it works.",
+    cascade: { persistent: true, volatile: true },
   },
 
   // --- Abstract ---
@@ -124,12 +141,14 @@ const CATALOG = [
     required: { vast: true, ephemeral: true },
     tier: "common",
     flavor: "A space where whispers return louder than they left.",
+    cascade: { vast: true },
   },
   {
     name: "Void Lens",
     required: { vast: true, sharp: true, cold: true },
     tier: "rare",
     flavor: "Focuses emptiness until it cuts.",
+    cascade: { cold: true, sharp: true },
   },
 ];
 
@@ -174,7 +193,7 @@ export function matchArchetype(unificationResult) {
     .slice(0, 3);
 
   return {
-    match: best ? { name: best.name, tier: best.tier, flavor: best.flavor } : null,
+    match: best ? { name: best.name, tier: best.tier, flavor: best.flavor, cascade: best.cascade || {} } : null,
     score: best ? { matched: best.matched, total: best.total, ratio: best.ratio, score: best.score } : null,
     candidates: candidates.map((c) => ({
       name: c.name,

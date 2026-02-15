@@ -2,7 +2,7 @@
 // test.js — Tests for tink trait unification engine
 
 import { unify, flattenUnified } from "./unify.js";
-import { matchArchetype } from "./archetypes.js";
+import { matchArchetype, getCatalog } from "./archetypes.js";
 
 let passed = 0, failed = 0, total = 0;
 const G = "\x1b[32m", R = "\x1b[31m", C = "\x1b[36m", B = "\x1b[1m", D = "\x1b[0m";
@@ -198,6 +198,28 @@ section("Archetype: near-miss detection");
     "Stormglass is a near-miss (2/3 traits)");
   ok(m.nearMisses[0].missingTraits !== undefined,
     "Near-miss includes missing traits");
+}
+
+// ═══ Archetype: cascade field ═══
+section("Archetype: cascade field");
+{
+  const catalog = getCatalog();
+  const aurora = catalog.find(a => a.name === "Aurora");
+  ok(aurora.cascade !== undefined, "Aurora has cascade field");
+  ok(typeof aurora.cascade === "object", "Cascade is an object");
+  ok(Object.keys(aurora.cascade).length > 0, "Cascade has at least one trait");
+
+  const bloom = catalog.find(a => a.name === "Paradox Bloom");
+  ok(bloom.cascade !== undefined, "Paradox Bloom has cascade field");
+}
+
+section("Archetype: match includes cascade");
+{
+  const r = unify({ bright: true, cold: true }, { bright: true });
+  const m = matchArchetype(r);
+  ok(m.match !== null, "Found match");
+  ok(m.match.cascade !== undefined, "Match result includes cascade");
+  ok(typeof m.match.cascade === "object", "Cascade is an object");
 }
 
 // ═══ Summary ═══
