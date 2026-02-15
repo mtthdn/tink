@@ -183,6 +183,23 @@ section("Archetype: specificity weighting");
   ok(m.candidates.length > 0, "Has candidates");
 }
 
+// ═══ Archetype: near-miss detection ═══
+section("Archetype: near-miss detection");
+{
+  // Has bright + cold (Aurora needs bright + cold) — exact match
+  // But also has volatile (Stormglass needs volatile + bright + liquid)
+  // Stormglass should show as near-miss (2/3 matched)
+  const r = unify({ bright: true, cold: true }, { volatile: true });
+  const m = matchArchetype(r);
+  eq(m.match?.name, "Aurora", "Aurora is the match");
+  ok(m.nearMisses !== undefined, "nearMisses field exists");
+  ok(m.nearMisses.length > 0, "Has near-misses");
+  ok(m.nearMisses.some(n => n.name === "Stormglass"),
+    "Stormglass is a near-miss (2/3 traits)");
+  ok(m.nearMisses[0].missingTraits !== undefined,
+    "Near-miss includes missing traits");
+}
+
 // ═══ Summary ═══
 console.log(`\n${B}\u2500\u2500 Results \u2500\u2500${D}`);
 console.log(`  Total:  ${total}`);

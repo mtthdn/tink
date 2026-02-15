@@ -158,6 +158,21 @@ export function matchArchetype(unificationResult) {
   });
 
   const best = candidates[0] || null;
+
+  // Near-misses: candidates that matched well but weren't the best
+  const nearMisses = candidates
+    .filter((c) => c !== best && c.ratio >= 0.5 && c.ratio < 1.0)
+    .map((c) => ({
+      name: c.name,
+      tier: c.tier,
+      matched: c.matched,
+      total: c.total,
+      ratio: c.ratio,
+      missingTraits: Object.keys(c.required)
+        .filter((k) => k !== "_minConflicts" && !(k in flat && flat[k] === c.required[k])),
+    }))
+    .slice(0, 3);
+
   return {
     match: best ? { name: best.name, tier: best.tier, flavor: best.flavor } : null,
     score: best ? { matched: best.matched, total: best.total, ratio: best.ratio, score: best.score } : null,
@@ -169,6 +184,7 @@ export function matchArchetype(unificationResult) {
       ratio: c.ratio,
       score: c.score,
     })),
+    nearMisses,
   };
 }
 
