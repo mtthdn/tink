@@ -29,3 +29,12 @@ r003: core.#Rejected & {
 	alternative: "Ground the mechanics in thematic resonance (weaving/tinkering mythology), invest in visual juice and spectacle during activation, prioritize feel over depth in early prototypes."
 	related:     {"INSIGHT-005": true}
 }
+
+r004: core.#Rejected & {
+	id:          "REJ-004"
+	approach:    "No-feedback experimentation (combine and see if anything happens)"
+	reason:      "Little Alchemy demonstrates the failure mode: invalid combinations produce zero signal. Late-game becomes exhaustive brute-force pair testing because there is no 'warmer/colder' gradient. Players stop experimenting and start systematic enumeration — the opposite of playful discovery."
+	date:        "2026-02-15"
+	alternative: "Three-tier result system (full match → archetype, partial match → ambient 'something stirs' signal, no match → generic trait-bundle). Every crossing produces readable output that teaches about the trait space. Near-misses have ambient visual/audio cues."
+	related:     {"INSIGHT-021": true, "INSIGHT-024": true}
+}

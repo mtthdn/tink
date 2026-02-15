@@ -38,25 +38,36 @@ _index: aggregate.#KGIndex & {
 		"INSIGHT-018": i018
 		"INSIGHT-019": i019
 		"INSIGHT-020": i020
+		"INSIGHT-021": i021
+		"INSIGHT-022": i022
+		"INSIGHT-023": i023
+		"INSIGHT-024": i024
+		"INSIGHT-025": i025
+		"INSIGHT-026": i026
+		"INSIGHT-027": i027
+		"INSIGHT-028": i028
 	}
 
 	rejected: {
 		"REJ-001": r001
 		"REJ-002": r002
 		"REJ-003": r003
+		"REJ-004": r004
 	}
 
 	patterns: {
-		"weave-and-watch":        p001
-		"trait-unification":      p002
-		"tension-spectrum":       p003
-		"progressive-revelation": p004
-		"cascade-chaining":       p005
-		"knowledge-as-progression": p006
-		"loom-as-program":        p007
+		"weave-and-watch":           p001
+		"trait-unification":         p002
+		"tension-spectrum":          p003
+		"progressive-revelation":    p004
+		"cascade-chaining":          p005
+		"knowledge-as-progression":  p006
+		"loom-as-program":           p007
 		"win-state-as-weaving-goal": p008
 		"node-map-exploration":      p009
 		"tapestry-resonance":        p010
+		"codex-as-discovery-graph":  p011
+		"two-stage-revelation":      p012
 	}
 }
 

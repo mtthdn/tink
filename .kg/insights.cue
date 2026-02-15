@@ -401,3 +401,164 @@ i020: core.#Insight & {
 		"Charge-up animation (0.5-1s) before first crossing resolves",
 	]
 }
+
+i021: core.#Insight & {
+	id:         "INSIGHT-021"
+	statement:  "Every crossing must produce a readable signal — 'nothing happens' kills experimentation"
+	evidence: [
+		"Little Alchemy: invalid combinations produce zero feedback, late-game becomes brute-force pair testing",
+		"Cultist Simulator: every verb action produces a result card — even failures teach aspect relationships",
+		"Golden Idol: graduated green/yellow/red feedback + 'two or fewer incorrect' sustains engagement even when wrong",
+		"Potion Craft: every ingredient moves the marker — invalid paths still reveal fog-of-war terrain",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Tink's tension spectrum already ensures every crossing has a classification (harmony/resonance/tension/paradox). The archetype match step must also produce readable output on non-match: partial match → 'something stirs' visual signal with thematic hint; no match → generic trait-bundle resource with visible unified traits. Experimentation is never wasted — every activation teaches something about trait space."
+	action_items: [
+		"Design 3-tier archetype result: full match (archetype produced), partial match (ambient signal + thematic flicker), no match (raw trait-bundle)",
+		"Log partial matches in codex if hint exists: 'you were close to discovering something'",
+		"Generic trait-bundles from non-matches become crafting resources for thread upgrades",
+	]
+}
+
+i022: core.#Insight & {
+	id:         "INSIGHT-022"
+	statement:  "Separate 'what exists' from 'how to get there' — the productive middle state drives exploration"
+	evidence: [
+		"Pokemon: silhouettes show existence without recipes — targeted collection replaces random grinding",
+		"Outer Wilds: Ship Log rumors show destinations without paths — knowledge of 'where' doesn't give 'how'",
+		"Obra Dinn: 60 empty journal rows frame the problem scope before any evidence is gathered",
+		"Potion Craft: fog-of-war reveals effect nodes exist at map edges before showing what they are",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "The codex should reveal archetypes in two stages. Stage 1 (Wander): hints, tablets, echoes reveal that an archetype EXISTS — name, thematic flavor, maybe one required trait. 'Vendetta Engine — where grudge becomes machinery.' Stage 2 (Activate): successfully producing the archetype fills in the mechanical details — all required traits, cascade outputs, tension level. The middle state ('I know it exists but not how to make it') drives purposeful experimentation."
+	action_items: [
+		"Design Wander-phase 'archetype hint' collectibles that create named-but-unfilled codex entries",
+		"Hints encode required traits thematically, not mechanically: 'where fire meets memory' not 'requires hot + temporal'",
+		"Filled codex entries show full trait requirements + cascade output for deliberate reproduction",
+	]
+}
+
+i023: core.#Insight & {
+	id:         "INSIGHT-023"
+	statement:  "Confirmation granularity must match iteration speed — tink's multi-minute cycles need gradient feedback"
+	evidence: [
+		"Obra Dinn: batch-3 confirmation with slow iteration = high frustration between confirmations",
+		"Golden Idol: per-section graduated feedback with fast iteration = sustained engagement, lower frustration",
+		"Little Alchemy: instant binary (works/nothing) with fast iteration = no guidance at all",
+		"Cultist Simulator: aspect-satisfaction display shows 'you need more X' = mechanical proximity wrapped in theme",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "Each Wander-Weave-Activate cycle takes multiple minutes. At this cadence, feedback must be gradient (Golden Idol model), not batch (Obra Dinn model). Show partial match proximity visually during Activate. Log near-misses in codex. Confirm each archetype independently on first discovery — no batch requirement."
+	action_items: [
+		"During Activate: visually indicate partial match strength (3/4 traits = bright flicker, 2/4 = dim pulse)",
+		"Independent archetype confirmation — each discovery is validated immediately, not batched",
+		"Near-miss logging: codex records 'closest approach' to undiscovered archetypes per run",
+	]
+}
+
+i024: core.#Insight & {
+	id:         "INSIGHT-024"
+	statement:  "Near-miss signals must be ambient and diegetic — a glow, not a popup"
+	evidence: [
+		"Potion Craft: fog-edge glow reveals outer edge of effect nodes before you can identify them",
+		"Breath of the Wild: temperature gauge and audible cues near hidden shrines — ambient, not interruptive",
+		"Avowed: shimmering sounds guide toward collectibles without map markers — rewards attention",
+		"Tunic: instruction manual pages in constructed language — the signal IS a puzzle",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "During Activate, when a crossing nearly matches an undiscovered archetype: (1) crossing glows with the archetype's thematic color before resolving to its actual output, (2) subtle sound cue — a chord that resolves differently than a full discovery fanfare, (3) unified traits briefly highlight which matched and which were missing, (4) codex hint for that archetype pulses if one exists. Casual players might miss these; attentive players use them to plan next Weave."
+	action_items: [
+		"Design 'something stirs' animation: thematic color glow + chord fragment, distinct from discovery fanfare",
+		"Highlight matching traits green, missing traits as dim silhouettes during near-miss flash",
+		"Connect near-miss to Wander hint: if codex has a hint entry, pulse it during the near-miss",
+	]
+}
+
+i025: core.#Insight & {
+	id:         "INSIGHT-025"
+	statement:  "First discovery of an archetype must be an unrepeatable peak experience"
+	evidence: [
+		"Cultist Simulator: first successful rite is a breakthrough after hours of failed attempts — player remembers it",
+		"Outer Wilds: the moment a connection clicks in the Ship Log is pure joy — unrepeatable once known",
+		"Obra Dinn: first batch-3 confirmation after 30 minutes of uncertainty = cathartic release",
+		"Slay the Spire: first Corruption+Dead Branch infinite combo discovery = 'this game is deeper than I thought'",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "When a player discovers a new archetype for the first time: (1) pause Activate sequence briefly — the loom itself reacts, (2) unique materialization animation per archetype, (3) distinctive sound motif (each archetype has its own chord), (4) codex opens with entry filling in, (5) first appearance produces enhanced cascade output. Subsequent productions are satisfying but muted — the discovery moment is unrepeatable and precious."
+	action_items: [
+		"Design 'first discovery' ceremony: loom pause + materialization + codex fanfare",
+		"Each archetype gets a unique sound motif (2-3 note chord) played only on first discovery",
+		"First production bonus: enhanced cascade output or extra trait emission as mechanical reward",
+	]
+}
+
+i026: core.#Insight & {
+	id:         "INSIGHT-026"
+	statement:  "Cascade-only archetypes create the ultimate discovery — impossible from a single crossing, only reachable through chain engineering"
+	evidence: [
+		"Cultist Simulator: multi-step lore upgrades require chaining verb outcomes — Exalt rite requires passing through Disciple and Follower first",
+		"Potion Craft: deepest effects on the alchemy map require long ingredient chains through dangerous territory",
+		"Balatro: the highest scores require multi-Joker chains that no single Joker can produce",
+		"Noita: the most powerful wand builds require modifier-spell-trigger chains that emerge from understanding component interaction",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "The archetype catalog should contain 'legendary' archetypes that require traits no single crossing can produce — they can only be reached when cascade emissions from one archetype modify downstream crossings. Discovering a cascade-only archetype is the peak experience: you engineered a multi-step chain that produced something no individual placement could. These are the archetypes players describe when they tell friends about the game."
+	action_items: [
+		"Design 3-5 cascade-only archetypes requiring traits only achievable through chain reactions",
+		"Cascade-only archetypes get the most dramatic discovery ceremony (screen-wide effects, unique animation)",
+		"Codex hints for cascade-only archetypes should be cryptic: 'born not from crossing but from consequence'",
+	]
+}
+
+i027: core.#Insight & {
+	id:         "INSIGHT-027"
+	statement:  "Potion Craft's fog-of-war codex is the right metaphor for tink's archetype space visualization"
+	evidence: [
+		"Potion Craft: 2D alchemy map with persistent fog — explored areas stay revealed, unexplored regions are dark",
+		"Outer Wilds: Rumor Mode shows connected knowledge as a graph with 'more to explore' indicators",
+		"Pokemon: numbered Pokedex with visible gaps creates targeted pursuit (Zeigarnik effect)",
+		"Hollow Knight: Hunter's Journal shows nothing until encountered — pure unknown unknowns",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "The codex should visualize archetype space as a 2D map with fog. Discovered archetypes are bright nodes. Wander hints illuminate fog regions ('something fire-related exists near the volatile cluster'). Related archetypes are spatially close (shared traits = neighbors). Cascade connections are visible edges between discovered nodes. The codex becomes a map of the archetype space that the player fills through play — not a list to complete but a territory to explore."
+	action_items: [
+		"Design codex as 2D trait-space map: axes are trait dimensions, archetypes plotted by required traits",
+		"Fog-of-war covers undiscovered regions; Wander hints illuminate specific areas",
+		"Discovered archetypes show as bright nodes with connections to related archetypes",
+		"Completion percentage visible: 'X of Y archetypes discovered' (Zeigarnik motivation)",
+	]
+}
+
+i028: core.#Insight & {
+	id:         "INSIGHT-028"
+	statement:  "Thematic coherence transforms mechanical discovery into narrative discovery — flavor text should encode recipes"
+	evidence: [
+		"Cultist Simulator: aspect-based lore teaches the symbolic language — 'Lantern is light and knowledge' informs combinations",
+		"Book of Hours: library catalog organizes knowledge thematically — finding the right book IS the mechanic",
+		"Hades: Achilles' subjective codex entries add character — the codex voice creates emotional connection",
+		"Outer Wilds: every discovery has narrative significance — 'the sun is dying' is both story and game state",
+	]
+	method:     "cross_reference"
+	confidence: "high"
+	discovered: "2026-02-15"
+	implication: "'Vendetta Engine — where grudge becomes machinery, and patience sharpens the blade' teaches the recipe through theme better than 'Archetype #7: requires emotional + mechanical + persistent.' Every archetype name, description, and Wander hint should encode required traits thematically. The codex voice should be consistent — the loom's voice? A previous weaver's journal? The threads themselves speaking?"
+	action_items: [
+		"Establish codex voice/perspective — recommend 'previous weaver's journal' for warmth + mystery",
+		"Every archetype description must encode at least 2 required traits thematically",
+		"Wander hint text should use the same thematic vocabulary as archetype descriptions",
+	]
+}

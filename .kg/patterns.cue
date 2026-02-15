@@ -112,3 +112,25 @@ p010: core.#Pattern & {
 	used_in: {"tink": true}
 	related: {"weave-and-watch": true, "win-state-as-weaving-goal": true}
 }
+
+p011: core.#Pattern & {
+	name:     "codex-as-discovery-graph"
+	category: "meta-game"
+	problem:  "Flat list codexes (Pokemon Pokedex, StS Compendium) reduce discovery to checkbox completion — no sense of spatial relationship between entries"
+	solution: "Visualize the archetype space as a 2D graph with fog-of-war. Discovered archetypes are bright nodes. Related archetypes (shared traits) are spatially close. Cascade connections are directed edges. Wander hints illuminate fog regions without revealing contents. The codex is a map to explore, not a list to complete."
+	context:  "Outer Wilds' Rumor Mode visualizes knowledge as a connected graph with 'more to explore here' indicators. Potion Craft's alchemy map uses persistent fog-of-war over a 2D space. Both transform completion-tracking into spatial exploration. The Zeigarnik effect (incomplete tasks create tension) works best when players can see the shape of what's missing."
+	example:  "Player discovers Aurora (bright+cold). Codex shows Aurora as a bright node. Fog near Aurora lifts slightly, revealing edges to two undiscovered neighbors. A Wander hint found earlier ('where fire meets memory') illuminates a distant fog region. The player now has two spatial leads: explore near Aurora, or investigate the fire-memory region."
+	used_in: {"tink": true}
+	related: {"progressive-revelation": true, "knowledge-as-progression": true}
+}
+
+p012: core.#Pattern & {
+	name:     "two-stage-revelation"
+	category: "content-design"
+	problem:  "Showing nothing about undiscovered content (Hollow Knight) loses direction; showing everything (explicit recipe list) kills discovery"
+	solution: "Reveal archetype existence and recipe in two separate stages. Stage 1 (Wander): hints, tablets, echoes create named-but-unfilled codex entries — the player knows an archetype EXISTS and its thematic flavor but not its recipe. Stage 2 (Activate): successfully producing the archetype fills in mechanical details (required traits, cascade output). The productive middle state ('I know what to look for but not how to make it') drives purposeful experimentation."
+	context:  "Pokemon silhouettes show existence without recipes. Obra Dinn's 60 empty journal rows frame the problem before evidence. Cultist Simulator's aspect hints on verbs show 'you need more X' without revealing the full recipe. The two-stage approach combines the motivation of knowing something exists with the satisfaction of figuring out how to reach it."
+	example:  "During Wander, player finds a tablet: 'Vendetta Engine — where grudge becomes machinery, and patience sharpens the blade.' Codex creates a named entry with thematic description but blank recipe. Player now knows to experiment with emotional + mechanical + persistent traits. When they successfully produce Vendetta Engine during Activate, the full entry fills in: required traits, cascade output, and the previous weaver's journal note."
+	used_in: {"tink": true}
+	related: {"progressive-revelation": true, "codex-as-discovery-graph": true}
+}
