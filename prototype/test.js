@@ -1,0 +1,154 @@
+#!/usr/bin/env node
+// test.js — Tests for tink trait unification engine
+
+import { unify, flattenUnified } from "./unify.js";
+import { matchArchetype } from "./archetypes.js";
+
+let passed = 0, failed = 0, total = 0;
+const G = "\x1b[32m", R = "\x1b[31m", C = "\x1b[36m", B = "\x1b[1m", D = "\x1b[0m";
+
+function ok(cond, msg) {
+  total++;
+  if (cond) { passed++; console.log(`  ${G}\u2713${D} ${msg}`); }
+  else { failed++; console.log(`  ${R}\u2717${D} ${msg}`); }
+}
+function eq(a, b, msg) {
+  total++;
+  if (a === b) { passed++; console.log(`  ${G}\u2713${D} ${msg}`); }
+  else { failed++; console.log(`  ${R}\u2717${D} ${msg} (expected ${JSON.stringify(b)}, got ${JSON.stringify(a)})`); }
+}
+function section(s) { console.log(`\n${B}${C}\u2500\u2500 ${s} \u2500\u2500${D}`); }
+
+// ═══ Harmony ═══
+section("Harmony");
+{
+  const r = unify({ bright: true, hot: true }, { liquid: true, organic: true });
+  eq(r.stability, "harmony", "Disjoint natures = harmony");
+  eq(r.conflicts.length, 0, "No conflicts");
+  eq(r.resonances.length, 0, "No resonances");
+  eq(Object.keys(r.unified).length, 4, "All 4 traits present");
+}
+{
+  const r = unify({ hot: true }, { cold: true });
+  eq(r.stability, "harmony", "Non-overlapping booleans = harmony");
+}
+
+// ═══ Resonance ═══
+section("Resonance");
+{
+  const r = unify({ bright: true, emotional: true, hot: true }, { bright: true, emotional: true, liquid: true });
+  eq(r.stability, "resonance", "Shared same-value traits = resonance");
+  ok(r.resonances.length >= 2, "At least 2 resonant traits");
+  eq(r.conflicts.length, 0, "No conflicts");
+}
+{
+  const r = unify({ volatile: true, bright: true }, { volatile: true, bright: true });
+  eq(r.stability, "resonance", "Identical natures = pure resonance");
+  eq(r.resonances.length, 2, "Both resonate");
+}
+
+// ═══ Tension ═══
+section("Tension");
+{
+  const r = unify({ bright: true, volatile: true, organic: true }, { bright: false, volatile: true, mechanical: true });
+  eq(r.stability, "tension", "1 conflict / 2 shared = tension");
+  ok(r.conflicts.includes("bright"), "bright conflicts");
+  ok(r.resonances.includes("volatile"), "volatile resonates");
+  ok(r.unified.bright?.conflicted, "Conflicted trait marked");
+}
+{
+  const r = unify({ hot: true, cold: true }, { hot: false, cold: true });
+  eq(r.stability, "tension", "50% conflict = tension (not paradox)");
+}
+
+// ═══ Paradox ═══
+section("Paradox");
+{
+  const r = unify({ bright: true, hot: true, organic: true }, { bright: false, hot: false, organic: false });
+  eq(r.stability, "paradox", "All shared keys conflict = paradox");
+  eq(r.conflicts.length, 3, "3 conflicts");
+  eq(r.resonances.length, 0, "No resonances");
+}
+{
+  const r = unify({ bright: true, hot: true, vast: true, quiet: true }, { bright: false, hot: false, vast: true, liquid: true });
+  eq(r.stability, "paradox", "2/3 conflict ratio = paradox");
+}
+
+// ═══ flattenUnified ═══
+section("flattenUnified");
+{
+  const f = flattenUnified({ bright: true, hot: { conflicted: true, from: [true, false] }, level: 5 });
+  eq(f.bright, true, "Boolean passes through");
+  eq(f.hot, "conflicted", "Conflicted becomes 'conflicted'");
+  eq(f.level, 5, "Number passes through");
+}
+
+// ═══ Archetype matching ═══
+section("Archetype: exact match");
+{
+  const r = unify({ bright: true, cold: true }, { bright: true });
+  const m = matchArchetype(r);
+  ok(m.match !== null, "Found match");
+  eq(m.match?.name, "Aurora", "Aurora matched");
+  eq(m.score?.ratio, 1.0, "Perfect ratio");
+}
+
+section("Archetype: Vendetta Engine");
+{
+  const r = unify({ emotional: true, mechanical: true }, { persistent: true, mechanical: true });
+  const m = matchArchetype(r);
+  ok(m.match !== null, "Found match");
+  eq(m.match?.name, "Vendetta Engine", "Vendetta Engine matched");
+}
+
+section("Archetype: Paradox Bloom");
+{
+  const r = unify({ bright: true, hot: true, organic: true }, { bright: false, hot: false, organic: false });
+  const m = matchArchetype(r);
+  ok(m.match !== null, "Found match");
+  eq(m.match?.name, "Paradox Bloom", "Paradox Bloom matched");
+}
+
+section("Archetype: no match");
+{
+  const r = unify({ magnetic: true }, { uncertain: true });
+  const m = matchArchetype(r);
+  eq(m.match, null, "No match for obscure traits");
+}
+
+section("Archetype: candidates list");
+{
+  const r = unify({ hot: true, emotional: true, volatile: true, bright: true }, { organic: true, persistent: true });
+  const m = matchArchetype(r);
+  ok(m.candidates.length > 0, "Multiple candidates found");
+  ok(m.candidates.every((c) => c.ratio >= 0.5), "All candidates >= 50% threshold");
+}
+
+// ═══ Edge cases ═══
+section("Edge cases");
+{
+  eq(unify({}, {}).stability, "harmony", "Empty natures = harmony");
+  eq(Object.keys(unify({}, {}).unified).length, 0, "Empty unified");
+  eq(unify({}, { bright: true }).stability, "harmony", "One empty = harmony");
+  eq(unify({ element: "fire" }, { element: "water" }).stability, "tension", "String conflict = tension");
+}
+
+// ═══ Number merging ═══
+section("Number merging");
+{
+  const r = unify({ power: 3 }, { power: 5 });
+  eq(r.stability, "resonance", "Same-sign numbers = resonance");
+  eq(r.unified.power, 8, "Numbers sum");
+}
+{
+  const r = unify({ charge: 5 }, { charge: -3 });
+  eq(r.stability, "tension", "Opposite-sign numbers = tension");
+  ok(r.unified.charge?.conflicted, "Conflicted number marked");
+}
+
+// ═══ Summary ═══
+console.log(`\n${B}\u2500\u2500 Results \u2500\u2500${D}`);
+console.log(`  Total:  ${total}`);
+console.log(`  ${G}Passed: ${passed}${D}`);
+if (failed > 0) { console.log(`  ${R}Failed: ${failed}${D}`); process.exit(1); }
+else { console.log(`\n  ${G}${B}\u2713 All tests passed!${D}\n`); }
