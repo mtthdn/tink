@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tink — The Loom</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --text: #c8c8d8;
+    --text-dim: #6e6e8e;
+    --accent: #7eb8da;
+    --gold: #d4a84e;
+    --green: #5cb85c;
+    --purple: #9b7ed8;
+    --red: #d85c5c;
+    --cyan: #5cd8d8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    min-height: 100vh;
+  }
+  h1, h2, h3 { font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 300; }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 1.5rem 0 1rem;
+  }
+  .header h1 {
+    font-size: 2rem;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+  }
+  .header .subtitle {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    font-style: italic;
+  }
+
+  /* Canvas container */
+  .loom-container {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+  }
+  canvas {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  /* Thread tray */
+  .tray-label {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 1rem;
+    color: var(--gold);
+    margin: 1.2rem 0 0.6rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .thread-tray {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .thread-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+    min-width: 140px;
+    flex: 1;
+    max-width: 200px;
+  }
+  .thread-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .thread-card.selected {
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(212, 168, 78, 0.2);
+  }
+  .thread-card .card-name {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+  .thread-card .card-rarity {
+    font-family: monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-left: 0.4rem;
+  }
+  .rarity-common { color: var(--text-dim); }
+  .rarity-uncommon { color: var(--green); }
+  .rarity-rare { color: var(--accent); }
+  .thread-card .card-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.4rem;
+  }
+  .trait-tag {
+    font-family: monospace;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 99px;
+    background: rgba(126, 184, 218, 0.1);
+    color: var(--cyan);
+    border: 1px solid rgba(126, 184, 218, 0.15);
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 0.8rem 0;
+  }
+  .btn {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.9rem;
+    padding: 0.6rem 1.4rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary {
+    background: linear-gradient(135deg, #1a2a3a, #12121a);
+    border-color: var(--gold);
+    color: var(--gold);
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.7rem 2rem;
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #2a3a4a, #1a1a2a);
+    color: #e8c87e;
+    border-color: #e8c87e;
+  }
+  .btn-danger { border-color: var(--red); color: var(--red); }
+  .btn-danger:hover { background: rgba(216, 92, 92, 0.1); }
+  .hint {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  /* Results panel */
+  .results-panel {
+    margin-top: 1.2rem;
+  }
+  .results-label {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 1rem;
+    color: var(--gold);
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .crossing-result {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.6rem;
+  }
+  .crossing-header {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+  }
+  .crossing-header .thread-name { color: var(--accent); font-weight: 600; }
+  .crossing-match {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+  }
+  .match-name {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+  .match-tier {
+    font-family: monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .tier-common { color: var(--text-dim); }
+  .tier-uncommon { color: var(--green); }
+  .tier-rare { color: var(--accent); }
+  .tier-mythic { color: var(--purple); }
+  .tier-legendary { color: var(--gold); }
+  .match-flavor {
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 0.3rem;
+  }
+  .stability-badge {
+    font-family: monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+    display: inline-block;
+  }
+  .stability-harmony { background: rgba(125, 186, 125, 0.15); color: #7dba7d; border: 1px solid rgba(125, 186, 125, 0.3); }
+  .stability-resonance { background: rgba(125, 125, 186, 0.15); color: #7d7dba; border: 1px solid rgba(125, 125, 186, 0.3); }
+  .stability-tension { background: rgba(186, 186, 125, 0.15); color: #baba7d; border: 1px solid rgba(186, 186, 125, 0.3); }
+  .stability-paradox { background: rgba(186, 125, 125, 0.15); color: #ba7d7d; border: 1px solid rgba(186, 125, 125, 0.3); }
+  .cascade-info {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--green);
+    margin-top: 0.3rem;
+  }
+  .near-misses {
+    margin-top: 0.4rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--border);
+  }
+  .near-miss {
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    opacity: 0.6;
+  }
+  .near-miss .nm-name { color: var(--text); }
+  .no-match {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+  .footer a { color: var(--text-dim); text-decoration: none; }
+  .footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>tink</h1>
+  <div class="subtitle">The Loom</div>
+</div>
+
+<div class="loom-container">
+  <canvas id="loomCanvas" width="600" height="500"></canvas>
+</div>
+
+<h2 class="tray-label">Thread Tray</h2>
+<div class="thread-tray" id="threadTray"></div>
+
+<div class="controls">
+  <button class="btn btn-primary" id="activateBtn">Pull the Lever</button>
+  <button class="btn btn-danger" id="resetBtn">Reset Loom</button>
+  <span class="hint" id="hintText">Click a thread, then click an empty hex to place it.</span>
+</div>
+
+<div class="results-panel" id="resultsPanel" style="display: none;">
+  <h2 class="results-label">Crossing Results</h2>
+  <div id="resultsContent"></div>
+</div>
+
+<div class="footer">
+  <a href="index.html">back to project page</a>
+</div>
+
+<script>
+// ============================================================
+// ENGINE: unify.js
+// ============================================================
+
+function unify(a, b) {
+  const allKeys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const sharedKeys = Object.keys(a).filter((k) => k in b);
+
+  const unified = {};
+  const conflicts = [];
+  const resonances = [];
+
+  for (const key of allKeys) {
+    const inA = key in a;
+    const inB = key in b;
+
+    if (inA && inB) {
+      const va = a[key];
+      const vb = b[key];
+
+      if (va === vb) {
+        unified[key] = va;
+        resonances.push(key);
+      } else if (typeof va === "number" && typeof vb === "number") {
+        if ((va > 0 && vb > 0) || (va < 0 && vb < 0) || va === 0 || vb === 0) {
+          unified[key] = va + vb;
+        } else {
+          unified[key] = { conflicted: true, from: [va, vb] };
+          conflicts.push(key);
+        }
+      } else {
+        unified[key] = { conflicted: true, from: [va, vb] };
+        conflicts.push(key);
+      }
+    } else {
+      unified[key] = inA ? a[key] : b[key];
+    }
+  }
+
+  let stability;
+  if (sharedKeys.length === 0) {
+    stability = "harmony";
+  } else if (conflicts.length === 0) {
+    stability = "resonance";
+  } else if (conflicts.length >= 2 && conflicts.length / sharedKeys.length > 0.5) {
+    stability = "paradox";
+  } else {
+    stability = "tension";
+  }
+
+  return { unified, stability, conflicts, resonances };
+}
+
+function flattenUnified(unified) {
+  const flat = {};
+  for (const [k, v] of Object.entries(unified)) {
+    if (v && typeof v === "object" && v.conflicted) {
+      flat[k] = "conflicted";
+    } else {
+      flat[k] = v;
+    }
+  }
+  return flat;
+}
+
+// ============================================================
+// ENGINE: archetypes.js
+// ============================================================
+
+const CATALOG = [
+  // --- Natural phenomena ---
+  {
+    name: "Aurora",
+    required: { bright: true, cold: true },
+    tier: "uncommon",
+    flavor: "Light bends through frozen air, painting impossible colors.",
+    cascade: { cold: true, bright: true },
+  },
+  {
+    name: "Stormglass",
+    required: { volatile: true, bright: true, liquid: true },
+    tier: "rare",
+    flavor: "A vessel of contained lightning, swirling and alive.",
+    cascade: { volatile: true, liquid: true },
+  },
+  {
+    name: "Permafrost",
+    required: { cold: true, persistent: true, vast: true },
+    tier: "uncommon",
+    flavor: "What freezes deep enough never thaws.",
+    cascade: { cold: true, persistent: true },
+  },
+  {
+    name: "Wildfire",
+    required: { hot: true, volatile: true, organic: true },
+    tier: "uncommon",
+    flavor: "It doesn't burn the forest. It becomes the forest.",
+    cascade: { hot: true, ephemeral: true },
+  },
+
+  // --- Emotional constructs ---
+  {
+    name: "Vendetta Engine",
+    required: { emotional: true, mechanical: true, persistent: true },
+    tier: "rare",
+    flavor: "A grudge so precise it runs on clockwork.",
+    cascade: { persistent: true, sharp: true },
+  },
+  {
+    name: "Euphoria Cascade",
+    required: { emotional: true, bright: true, volatile: true },
+    tier: "uncommon",
+    flavor: "Joy so intense it becomes unstable.",
+    cascade: { bright: true, ephemeral: true },
+  },
+  {
+    name: "Quiet Resolve",
+    required: { emotional: true, persistent: true, calm: true },
+    tier: "common",
+    flavor: "Not loud. Not fast. But absolutely certain.",
+    cascade: { calm: true },
+  },
+  {
+    name: "Heartstring",
+    required: { emotional: true, organic: true },
+    tier: "common",
+    flavor: "A connection that pulses with something warm.",
+    cascade: { organic: true },
+  },
+
+  // --- Mythological archetypes ---
+  {
+    name: "Web of Wyrd",
+    required: { persistent: true, vast: true, sharp: true },
+    tier: "rare",
+    flavor: "Fate is not a line. It is a net, and every knot remembers.",
+    cascade: { persistent: true, vast: true },
+  },
+  {
+    name: "Anansi's Thread",
+    required: { sharp: true, organic: true, ephemeral: true },
+    tier: "rare",
+    flavor: "The trickster's gift: a story that catches you before you catch it.",
+    cascade: { sharp: true, ephemeral: true },
+  },
+  {
+    name: "Bifrost Shard",
+    required: { bright: true, vast: true, cold: true },
+    tier: "rare",
+    flavor: "A fragment of the bridge between worlds, still humming.",
+    cascade: { bright: true, vast: true },
+  },
+
+  // --- Inventions ---
+  {
+    name: "Perpetual Motion",
+    required: { mechanical: true, persistent: true },
+    tier: "uncommon",
+    flavor: "It shouldn't work. It does. Don't ask why.",
+    cascade: { mechanical: true },
+  },
+  {
+    name: "Resonance Crystal",
+    required: { bright: true, sharp: true, mechanical: true },
+    tier: "uncommon",
+    flavor: "Cut to a frequency that makes other things vibrate in sympathy.",
+    cascade: { bright: true, sharp: true },
+  },
+  {
+    name: "Living Clockwork",
+    required: { mechanical: true, organic: true, persistent: true },
+    tier: "rare",
+    flavor: "Gears that grow. Springs that breathe. Ticking that sounds like a heartbeat.",
+    cascade: { organic: true, mechanical: true },
+  },
+
+  // --- Paradox archetypes (require conflict) ---
+  {
+    name: "Paradox Bloom",
+    required: { _minConflicts: 3 },
+    tier: "mythic",
+    flavor: "A flower that exists in the space between contradictions. It is beautiful and it should not be.",
+    cascade: { volatile: true, organic: true, emotional: true },
+  },
+  {
+    name: "Schrodinger's Thread",
+    required: { _minConflicts: 2, mechanical: true },
+    tier: "rare",
+    flavor: "Simultaneously wound and unwound until observed.",
+    cascade: { mechanical: true, ephemeral: true },
+  },
+  {
+    name: "Oxymoron Engine",
+    required: { _minConflicts: 2, persistent: true },
+    tier: "rare",
+    flavor: "Runs on impossibility. The more it contradicts, the harder it works.",
+    cascade: { persistent: true, volatile: true },
+  },
+
+  // --- Abstract ---
+  {
+    name: "Echo Chamber",
+    required: { vast: true, ephemeral: true },
+    tier: "common",
+    flavor: "A space where whispers return louder than they left.",
+    cascade: { vast: true },
+  },
+  {
+    name: "Void Lens",
+    required: { vast: true, sharp: true, cold: true },
+    tier: "rare",
+    flavor: "Focuses emptiness until it cuts.",
+    cascade: { cold: true, sharp: true },
+  },
+
+  // --- Legendary (cascade-only) ---
+  {
+    name: "Tapestry of Ages",
+    required: { persistent: true, vast: true, emotional: true, bright: true, organic: true },
+    cascade: { persistent: true, vast: true, calm: true },
+    tier: "legendary",
+    flavor: "Every thread that ever was, remembered in a single weave.",
+  },
+  {
+    name: "Paradox Engine",
+    required: { _minConflicts: 3, mechanical: true, persistent: true, volatile: true, emotional: true },
+    cascade: { volatile: true, mechanical: true, sharp: true },
+    tier: "legendary",
+    flavor: "It runs on impossibility. Each contradiction powers the next.",
+  },
+  {
+    name: "The Unraveling",
+    required: { ephemeral: true, vast: true, sharp: true, volatile: true, emotional: true },
+    cascade: { ephemeral: true, volatile: true },
+    tier: "legendary",
+    flavor: "Not destruction. Transformation so fast it looks like ending.",
+  },
+];
+
+function matchArchetype(unificationResult) {
+  const { unified, conflicts } = unificationResult;
+  const flat = flattenUnified(unified);
+  const candidates = [];
+
+  for (const archetype of CATALOG) {
+    const score = scoreMatch(flat, archetype, conflicts);
+    if (score.ratio >= 0.5) {
+      candidates.push({ ...archetype, ...score });
+    }
+  }
+
+  const tierOrder = { legendary: -1, mythic: 0, rare: 1, uncommon: 2, common: 3 };
+  candidates.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (tierOrder[a.tier] ?? 4) - (tierOrder[b.tier] ?? 4);
+  });
+
+  const best = candidates[0] || null;
+
+  const nearMisses = candidates
+    .filter((c) => c !== best && c.ratio >= 0.5 && c.ratio < 1.0)
+    .map((c) => ({
+      name: c.name,
+      tier: c.tier,
+      matched: c.matched,
+      total: c.total,
+      ratio: c.ratio,
+      missingTraits: Object.keys(c.required)
+        .filter((k) => k !== "_minConflicts" && !(k in flat && flat[k] === c.required[k])),
+    }))
+    .slice(0, 3);
+
+  return {
+    match: best ? { name: best.name, tier: best.tier, flavor: best.flavor, cascade: best.cascade || {} } : null,
+    score: best ? { matched: best.matched, total: best.total, ratio: best.ratio, score: best.score } : null,
+    candidates: candidates.map((c) => ({
+      name: c.name,
+      tier: c.tier,
+      matched: c.matched,
+      total: c.total,
+      ratio: c.ratio,
+      score: c.score,
+    })),
+    nearMisses,
+  };
+}
+
+function scoreMatch(flat, archetype, conflicts) {
+  const req = archetype.required;
+  let matched = 0;
+  let total = 0;
+
+  for (const [key, val] of Object.entries(req)) {
+    if (key === "_minConflicts") {
+      total++;
+      if (conflicts.length >= val) matched++;
+      continue;
+    }
+    total++;
+    if (key in flat && flat[key] === val) {
+      matched++;
+    }
+  }
+
+  const ratio = total > 0 ? matched / total : 0;
+  const score = matched * (1 + ratio * 0.1);
+  return { matched, total, ratio, score };
+}
+
+function getCatalog() {
+  return CATALOG;
+}
+
+// ============================================================
+// ENGINE: threads.js
+// ============================================================
+
+const THREADS = [
+  // --- Physical (common) ---
+  { name: "Ember", nature: { hot: true, bright: true, ephemeral: true }, rarity: "common", flavor: "A spark remembering the fire it came from." },
+  { name: "Glacier", nature: { cold: true, vast: true, persistent: true }, rarity: "common", flavor: "Patience measured in millennia." },
+  { name: "Clockwork", nature: { mechanical: true, persistent: true, sharp: true }, rarity: "common", flavor: "Every tooth knows its neighbor." },
+  { name: "Tidepool", nature: { liquid: true, organic: true, calm: true }, rarity: "common", flavor: "A small world, complete." },
+  { name: "Obsidian", nature: { sharp: true, cold: true, persistent: true }, rarity: "common", flavor: "Glass born from violence, cooled into patience." },
+  { name: "Pollen", nature: { organic: true, ephemeral: true, bright: true }, rarity: "common", flavor: "Carries futures on the wind." },
+  { name: "Lodestone", nature: { mechanical: true, persistent: true }, rarity: "common", flavor: "It points. It always points." },
+  { name: "Dewdrop", nature: { liquid: true, bright: true, ephemeral: true }, rarity: "common", flavor: "A lens that lasts until the sun finds it." },
+  { name: "Granite", nature: { vast: true, persistent: true, calm: true }, rarity: "common", flavor: "The mountain does not argue." },
+  { name: "Spark", nature: { hot: true, volatile: true, ephemeral: true }, rarity: "common", flavor: "A beginning that doesn't know it yet." },
+
+  // --- Emotional (uncommon) ---
+  { name: "Grudge", nature: { emotional: true, persistent: true, hot: true }, rarity: "uncommon", flavor: "It remembers everything. Forgives nothing." },
+  { name: "Joy", nature: { emotional: true, bright: true, volatile: true }, rarity: "uncommon", flavor: "Difficult to hold. Impossible to fake." },
+  { name: "Doubt", nature: { emotional: true, cold: true, sharp: true }, rarity: "uncommon", flavor: "The blade you sharpen against yourself." },
+  { name: "Nostalgia", nature: { emotional: true, ephemeral: true, calm: true }, rarity: "uncommon", flavor: "The past, edited for your comfort." },
+  { name: "Fury", nature: { emotional: true, hot: true, volatile: true }, rarity: "uncommon", flavor: "Burns clean. Burns everything." },
+  { name: "Awe", nature: { emotional: true, vast: true, bright: true }, rarity: "uncommon", flavor: "The feeling of smallness that makes you larger." },
+  { name: "Dread", nature: { emotional: true, cold: true, persistent: true, vast: true }, rarity: "uncommon", flavor: "The weight of a future you can already see." },
+  { name: "Whimsy", nature: { emotional: true, volatile: true, bright: true, organic: true }, rarity: "uncommon", flavor: "Rules? What rules?" },
+  { name: "Patience", nature: { emotional: true, persistent: true, calm: true }, rarity: "uncommon", flavor: "Not waiting. Choosing when." },
+  { name: "Spite", nature: { emotional: true, sharp: true, hot: true, persistent: true }, rarity: "uncommon", flavor: "Revenge's quieter, more efficient sibling." },
+
+  // --- Abstract (rare) ---
+  { name: "Paradox", nature: { volatile: true, persistent: true, hot: true, cold: true }, rarity: "rare", flavor: "It insists on being two things at once." },
+  { name: "Echo", nature: { ephemeral: true, vast: true, mechanical: true }, rarity: "rare", flavor: "A shape left by something that already passed." },
+  { name: "Silence", nature: { calm: true, vast: true, cold: true }, rarity: "rare", flavor: "Not the absence of sound. The presence of nothing." },
+  { name: "Catalyst", nature: { volatile: true, sharp: true, organic: true }, rarity: "rare", flavor: "Unchanged by the change it causes." },
+  { name: "Recursion", nature: { mechanical: true, persistent: true, vast: true }, rarity: "rare", flavor: "It contains itself, which contains itself, which--" },
+  { name: "Mirage", nature: { bright: true, hot: true, vast: true, ephemeral: true }, rarity: "rare", flavor: "Real enough to walk toward. Gone when you arrive." },
+  { name: "Entropy", nature: { vast: true, persistent: true, cold: true, volatile: true }, rarity: "rare", flavor: "Everything falls apart. This is how." },
+  { name: "Anima", nature: { organic: true, emotional: true, bright: true, persistent: true }, rarity: "rare", flavor: "The part that makes the rest alive." },
+  { name: "Void", nature: { vast: true, cold: true, calm: true, persistent: true }, rarity: "rare", flavor: "Not empty. Full of nothing." },
+  { name: "Ouroboros", nature: { organic: true, mechanical: true, persistent: true, volatile: true }, rarity: "rare", flavor: "The end that is the beginning that is the end." },
+];
+
+function getAllThreads() {
+  return THREADS;
+}
+
+function randomThreads(count) {
+  const shuffled = [...THREADS].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+function getByRarity(rarity) {
+  return THREADS.filter((t) => t.rarity === rarity);
+}
+
+// ============================================================
+// ENGINE: loom.js
+// ============================================================
+
+const HEX_POSITIONS = [
+  { q: 0, r: 0 },   // center
+  { q: 1, r: 0 },   // east
+  { q: 0, r: 1 },   // southeast
+  { q: -1, r: 1 },  // southwest
+  { q: -1, r: 0 },  // west
+  { q: 0, r: -1 },  // northwest
+  { q: 1, r: -1 },  // northeast
+];
+
+const HEX_DIRS = [
+  { q: 1, r: 0 }, { q: 0, r: 1 }, { q: -1, r: 1 },
+  { q: -1, r: 0 }, { q: 0, r: -1 }, { q: 1, r: -1 },
+];
+
+function posKey(q, r) { return `${q},${r}`; }
+function isValid(q, r) { return HEX_POSITIONS.some((p) => p.q === q && p.r === r); }
+
+class Loom {
+  constructor() {
+    this.grid = new Map();
+    this.crossings = [];
+  }
+
+  place(thread, q, r) {
+    if (!isValid(q, r)) throw new Error(`Invalid hex position (${q}, ${r})`);
+    const key = posKey(q, r);
+    if (this.grid.has(key)) throw new Error(`Position (${q}, ${r}) occupied by "${this.grid.get(key).name}"`);
+    this.grid.set(key, thread);
+    return this;
+  }
+
+  remove(q, r) {
+    const key = posKey(q, r);
+    this.grid.delete(key);
+    return this;
+  }
+
+  getNeighbors(q, r) {
+    const neighbors = [];
+    for (const d of HEX_DIRS) {
+      const key = posKey(q + d.q, r + d.r);
+      if (this.grid.has(key)) {
+        neighbors.push({ q: q + d.q, r: r + d.r, thread: this.grid.get(key) });
+      }
+    }
+    return neighbors;
+  }
+
+  getPositions() {
+    return HEX_POSITIONS.map((p) => ({
+      q: p.q, r: p.r,
+      thread: this.grid.get(posKey(p.q, p.r)) || null,
+    }));
+  }
+
+  activate() {
+    this.crossings = [];
+    const resolved = new Set();
+    const cascadePool = new Map();
+    const pairKey = (q1, r1, q2, r2) => {
+      const a = posKey(q1, r1), b = posKey(q2, r2);
+      return a < b ? `${a}|${b}` : `${b}|${a}`;
+    };
+
+    const resolveCrossing = (tA, qa, ra, tB, qb, rb) => {
+      const keyA = posKey(qa, ra);
+      const keyB = posKey(qb, rb);
+      const extraA = cascadePool.get(keyA) || {};
+      const extraB = cascadePool.get(keyB) || {};
+
+      const natureA = { ...tA.nature, ...extraA };
+      const natureB = { ...tB.nature, ...extraB };
+
+      const result = unify(natureA, natureB);
+      const archetype = matchArchetype(result);
+
+      if (archetype.match?.cascade) {
+        const cascade = archetype.match.cascade;
+        for (const [pq, pr] of [[qa, ra], [qb, rb]]) {
+          for (const nb2 of this.getNeighbors(pq, pr)) {
+            const nbKey = posKey(nb2.q, nb2.r);
+            const existing = cascadePool.get(nbKey) || {};
+            cascadePool.set(nbKey, { ...existing, ...cascade });
+          }
+        }
+      }
+
+      return {
+        threadA: { ...tA, position: { q: qa, r: ra } },
+        threadB: { ...tB, position: { q: qb, r: rb } },
+        unification: result,
+        archetype,
+        cascadeApplied: [
+          ...Object.keys(extraA).map(k => ({ trait: k, to: keyA })),
+          ...Object.keys(extraB).map(k => ({ trait: k, to: keyB })),
+        ],
+      };
+    };
+
+    // Center first
+    const center = this.grid.get(posKey(0, 0));
+    if (center) {
+      for (const nb of this.getNeighbors(0, 0)) {
+        const pk = pairKey(0, 0, nb.q, nb.r);
+        if (!resolved.has(pk)) {
+          resolved.add(pk);
+          this.crossings.push(resolveCrossing(center, 0, 0, nb.thread, nb.q, nb.r));
+        }
+      }
+    }
+
+    // Then ring cells
+    for (let i = 1; i < HEX_POSITIONS.length; i++) {
+      const pos = HEX_POSITIONS[i];
+      const thread = this.grid.get(posKey(pos.q, pos.r));
+      if (!thread) continue;
+      for (const nb of this.getNeighbors(pos.q, pos.r)) {
+        const pk = pairKey(pos.q, pos.r, nb.q, nb.r);
+        if (!resolved.has(pk)) {
+          resolved.add(pk);
+          this.crossings.push(resolveCrossing(thread, pos.q, pos.r, nb.thread, nb.q, nb.r));
+        }
+      }
+    }
+
+    return this.crossings;
+  }
+
+  static get POSITIONS() { return HEX_POSITIONS; }
+}
+
+// ============================================================
+// GAME STATE
+// ============================================================
+
+const canvas = document.getElementById("loomCanvas");
+const ctx = canvas.getContext("2d");
+
+const HEX_SIZE = 55;
+const CENTER_X = canvas.width / 2;
+const CENTER_Y = canvas.height / 2 - 10;
+
+let loom = new Loom();
+let trayThreads = [];
+let selectedTrayIndex = null;
+let lastCrossings = null;
+
+// Pixel positions for each hex cell
+function hexToPixel(q, r) {
+  const x = HEX_SIZE * (3/2 * q);
+  const y = HEX_SIZE * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
+  return { x: CENTER_X + x, y: CENTER_Y + y };
+}
+
+// Rarity to fill color
+function rarityColor(rarity) {
+  switch (rarity) {
+    case "common": return "#2a2a3a";
+    case "uncommon": return "#1a2e1a";
+    case "rare": return "#1a2535";
+    default: return "#2a2a3a";
+  }
+}
+
+function rarityStroke(rarity) {
+  switch (rarity) {
+    case "common": return "#4a4a5a";
+    case "uncommon": return "#5cb85c";
+    case "rare": return "#7eb8da";
+    default: return "#4a4a5a";
+  }
+}
+
+// Trait colors for dots
+const TRAIT_COLORS = {
+  hot: "#d85c5c",
+  cold: "#7eb8da",
+  bright: "#d4a84e",
+  volatile: "#d85c5c",
+  persistent: "#6e8e6e",
+  ephemeral: "#9b7ed8",
+  organic: "#5cb85c",
+  mechanical: "#8888aa",
+  sharp: "#c8c8d8",
+  liquid: "#5cd8d8",
+  calm: "#5588aa",
+  vast: "#7d7dba",
+  emotional: "#d89b7e",
+};
+
+// ============================================================
+// CANVAS RENDERER
+// ============================================================
+
+function drawHexagon(cx, cy, size, fill, stroke, lineWidth) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 6;
+    const hx = cx + size * Math.cos(angle);
+    const hy = cy + size * Math.sin(angle);
+    if (i === 0) ctx.moveTo(hx, hy);
+    else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  if (fill) {
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth || 1.5;
+    ctx.stroke();
+  }
+}
+
+function drawLoom() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw subtle glow at center
+  const grad = ctx.createRadialGradient(CENTER_X, CENTER_Y, 0, CENTER_X, CENTER_Y, HEX_SIZE * 3.5);
+  grad.addColorStop(0, "rgba(126, 184, 218, 0.06)");
+  grad.addColorStop(1, "rgba(126, 184, 218, 0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw edge connections between adjacent occupied cells
+  const positions = loom.getPositions();
+  ctx.strokeStyle = "#1e1e2e";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < positions.length; i++) {
+    const posA = positions[i];
+    const pxA = hexToPixel(posA.q, posA.r);
+    for (let j = i + 1; j < positions.length; j++) {
+      const posB = positions[j];
+      // Check adjacency
+      const dq = posB.q - posA.q;
+      const dr = posB.r - posA.r;
+      const isAdj = HEX_DIRS.some(d => d.q === dq && d.r === dr);
+      if (isAdj) {
+        const pxB = hexToPixel(posB.q, posB.r);
+        // Brighter line if both occupied
+        if (posA.thread && posB.thread) {
+          ctx.strokeStyle = "rgba(126, 184, 218, 0.25)";
+          ctx.lineWidth = 1.5;
+        } else {
+          ctx.strokeStyle = "#1e1e2e";
+          ctx.lineWidth = 1;
+        }
+        ctx.beginPath();
+        ctx.moveTo(pxA.x, pxA.y);
+        ctx.lineTo(pxB.x, pxB.y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Draw hex cells
+  for (const pos of positions) {
+    const px = hexToPixel(pos.q, pos.r);
+    const isCenter = pos.q === 0 && pos.r === 0;
+
+    if (pos.thread) {
+      // Occupied cell
+      const fill = rarityColor(pos.thread.rarity);
+      const stroke = rarityStroke(pos.thread.rarity);
+      drawHexagon(px.x, px.y, HEX_SIZE - 2, fill, stroke, isCenter ? 2.5 : 2);
+
+      // Thread name
+      ctx.fillStyle = "#c8c8d8";
+      ctx.font = "bold 12px 'Segoe UI', system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(pos.thread.name, px.x, px.y - 6);
+
+      // Rarity label
+      ctx.fillStyle = rarityStroke(pos.thread.rarity);
+      ctx.font = "9px monospace";
+      ctx.fillText(pos.thread.rarity, px.x, px.y + 8);
+
+      // Trait dots
+      const traits = Object.keys(pos.thread.nature);
+      const dotSpacing = 8;
+      const totalWidth = (traits.length - 1) * dotSpacing;
+      const startX = px.x - totalWidth / 2;
+      const dotY = px.y + 22;
+
+      for (let i = 0; i < traits.length; i++) {
+        const color = TRAIT_COLORS[traits[i]] || "#6e6e8e";
+        ctx.beginPath();
+        ctx.arc(startX + i * dotSpacing, dotY, 3, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+    } else {
+      // Empty cell
+      drawHexagon(px.x, px.y, HEX_SIZE - 2, "rgba(18, 18, 26, 0.5)", "#2a2a3a", 1);
+
+      // Position label
+      const labels = { "0,0": "center", "1,0": "E", "0,1": "SE", "-1,1": "SW", "-1,0": "W", "0,-1": "NW", "1,-1": "NE" };
+      ctx.fillStyle = "#333";
+      ctx.font = "10px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(labels[posKey(pos.q, pos.r)] || "", px.x, px.y);
+    }
+  }
+
+  // Title above loom
+  ctx.fillStyle = "#3a3a4a";
+  ctx.font = "italic 11px Georgia, serif";
+  ctx.textAlign = "center";
+  ctx.fillText("7-cell hex loom", CENTER_X, canvas.height - 12);
+}
+
+// ============================================================
+// THREAD TRAY
+// ============================================================
+
+function renderTray() {
+  const tray = document.getElementById("threadTray");
+  tray.innerHTML = "";
+
+  if (trayThreads.length === 0) {
+    tray.innerHTML = '<span class="hint">No threads in tray. Reset to start over.</span>';
+    return;
+  }
+
+  trayThreads.forEach((thread, idx) => {
+    const card = document.createElement("div");
+    card.className = "thread-card" + (selectedTrayIndex === idx ? " selected" : "");
+
+    const header = document.createElement("div");
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "card-name";
+    nameSpan.textContent = thread.name;
+    header.appendChild(nameSpan);
+
+    const raritySpan = document.createElement("span");
+    raritySpan.className = "card-rarity rarity-" + thread.rarity;
+    raritySpan.textContent = thread.rarity;
+    header.appendChild(raritySpan);
+    card.appendChild(header);
+
+    const traitsDiv = document.createElement("div");
+    traitsDiv.className = "card-traits";
+    for (const trait of Object.keys(thread.nature)) {
+      const tag = document.createElement("span");
+      tag.className = "trait-tag";
+      tag.textContent = trait;
+      tag.style.borderColor = TRAIT_COLORS[trait] || "rgba(126, 184, 218, 0.15)";
+      tag.style.color = TRAIT_COLORS[trait] || "#5cd8d8";
+      traitsDiv.appendChild(tag);
+    }
+    card.appendChild(traitsDiv);
+
+    card.addEventListener("click", () => {
+      if (selectedTrayIndex === idx) {
+        selectedTrayIndex = null;
+      } else {
+        selectedTrayIndex = idx;
+      }
+      renderTray();
+      updateHint();
+    });
+
+    tray.appendChild(card);
+  });
+}
+
+function updateHint() {
+  const hint = document.getElementById("hintText");
+  if (selectedTrayIndex !== null) {
+    hint.textContent = "Click an empty hex on the loom to place " + trayThreads[selectedTrayIndex].name + ".";
+  } else if (trayThreads.length > 0) {
+    hint.textContent = "Click a thread, then click an empty hex to place it.";
+  } else {
+    hint.textContent = "All threads placed. Pull the Lever to activate!";
+  }
+}
+
+// ============================================================
+// CANVAS CLICK HANDLER
+// ============================================================
+
+canvas.addEventListener("click", (e) => {
+  if (selectedTrayIndex === null) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  // Find which hex was clicked (point-in-hex test)
+  for (const pos of HEX_POSITIONS) {
+    const px = hexToPixel(pos.q, pos.r);
+    const dist = Math.sqrt((mx - px.x) ** 2 + (my - px.y) ** 2);
+
+    if (dist < HEX_SIZE - 5) {
+      const key = posKey(pos.q, pos.r);
+      if (loom.grid.has(key)) {
+        // Already occupied
+        return;
+      }
+
+      // Place the thread
+      const thread = trayThreads[selectedTrayIndex];
+      loom.place(thread, pos.q, pos.r);
+      trayThreads.splice(selectedTrayIndex, 1);
+      selectedTrayIndex = null;
+      lastCrossings = null;
+      document.getElementById("resultsPanel").style.display = "none";
+
+      drawLoom();
+      renderTray();
+      updateHint();
+      return;
+    }
+  }
+});
+
+// ============================================================
+// ACTIVATE BUTTON
+// ============================================================
+
+document.getElementById("activateBtn").addEventListener("click", () => {
+  // Need at least one crossing (2 adjacent threads)
+  let hasAdjacentPair = false;
+  for (const pos of loom.getPositions()) {
+    if (pos.thread) {
+      const neighbors = loom.getNeighbors(pos.q, pos.r);
+      if (neighbors.length > 0) {
+        hasAdjacentPair = true;
+        break;
+      }
+    }
+  }
+
+  if (!hasAdjacentPair) {
+    document.getElementById("hintText").textContent = "Place at least two adjacent threads to activate.";
+    return;
+  }
+
+  lastCrossings = loom.activate();
+  renderResults(lastCrossings);
+});
+
+// ============================================================
+// RESULTS RENDERER
+// ============================================================
+
+function renderResults(crossings) {
+  const panel = document.getElementById("resultsPanel");
+  const content = document.getElementById("resultsContent");
+  content.innerHTML = "";
+
+  if (crossings.length === 0) {
+    content.innerHTML = '<div class="no-match">No crossings to resolve.</div>';
+    panel.style.display = "block";
+    return;
+  }
+
+  for (const crossing of crossings) {
+    const div = document.createElement("div");
+    div.className = "crossing-result";
+
+    // Header: Thread A x Thread B
+    const header = document.createElement("div");
+    header.className = "crossing-header";
+    header.innerHTML =
+      '<span class="thread-name">' + crossing.threadA.name + '</span>' +
+      ' (' + crossing.threadA.position.q + ',' + crossing.threadA.position.r + ')' +
+      ' x ' +
+      '<span class="thread-name">' + crossing.threadB.name + '</span>' +
+      ' (' + crossing.threadB.position.q + ',' + crossing.threadB.position.r + ')';
+    div.appendChild(header);
+
+    // Stability badge
+    const stability = crossing.unification.stability;
+    const badge = document.createElement("span");
+    badge.className = "stability-badge stability-" + stability;
+    badge.textContent = stability;
+    div.appendChild(badge);
+
+    // Archetype match
+    if (crossing.archetype.match) {
+      const matchDiv = document.createElement("div");
+      matchDiv.className = "crossing-match";
+      matchDiv.style.marginTop = "0.4rem";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "match-name";
+      nameSpan.textContent = crossing.archetype.match.name;
+      matchDiv.appendChild(nameSpan);
+
+      const tierSpan = document.createElement("span");
+      tierSpan.className = "match-tier tier-" + crossing.archetype.match.tier;
+      tierSpan.textContent = crossing.archetype.match.tier;
+      matchDiv.appendChild(tierSpan);
+
+      if (crossing.archetype.score) {
+        const scoreSpan = document.createElement("span");
+        scoreSpan.style.cssText = "font-family: monospace; font-size: 0.7rem; color: #6e6e8e;";
+        scoreSpan.textContent = crossing.archetype.score.matched + "/" + crossing.archetype.score.total;
+        matchDiv.appendChild(scoreSpan);
+      }
+
+      div.appendChild(matchDiv);
+
+      // Flavor text
+      const flavorDiv = document.createElement("div");
+      flavorDiv.className = "match-flavor";
+      flavorDiv.textContent = crossing.archetype.match.flavor;
+      div.appendChild(flavorDiv);
+
+      // Cascade info
+      const cascadeTraits = Object.keys(crossing.archetype.match.cascade || {});
+      if (cascadeTraits.length > 0) {
+        const cascadeDiv = document.createElement("div");
+        cascadeDiv.className = "cascade-info";
+        cascadeDiv.textContent = "cascade: {" + cascadeTraits.join(", ") + "}";
+        div.appendChild(cascadeDiv);
+      }
+    } else {
+      const noMatch = document.createElement("div");
+      noMatch.className = "no-match";
+      noMatch.textContent = "No archetype matched.";
+      noMatch.style.marginTop = "0.4rem";
+      div.appendChild(noMatch);
+    }
+
+    // Cascade applied indicators
+    if (crossing.cascadeApplied && crossing.cascadeApplied.length > 0) {
+      const appliedDiv = document.createElement("div");
+      appliedDiv.className = "cascade-info";
+      appliedDiv.style.color = "#9b7ed8";
+      const traitNames = [...new Set(crossing.cascadeApplied.map(c => c.trait))];
+      appliedDiv.textContent = "received cascade: {" + traitNames.join(", ") + "}";
+      div.appendChild(appliedDiv);
+    }
+
+    // Near-misses
+    if (crossing.archetype.nearMisses && crossing.archetype.nearMisses.length > 0) {
+      const nmDiv = document.createElement("div");
+      nmDiv.className = "near-misses";
+
+      for (const nm of crossing.archetype.nearMisses) {
+        const nmLine = document.createElement("div");
+        nmLine.className = "near-miss";
+        nmLine.innerHTML =
+          '<span class="nm-name">' + nm.name + '</span>' +
+          ' (' + nm.tier + ') ' +
+          nm.matched + '/' + nm.total +
+          (nm.missingTraits.length > 0 ? ' — missing: ' + nm.missingTraits.join(', ') : '');
+        nmDiv.appendChild(nmLine);
+      }
+
+      div.appendChild(nmDiv);
+    }
+
+    content.appendChild(div);
+  }
+
+  panel.style.display = "block";
+}
+
+// ============================================================
+// RESET
+// ============================================================
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  initGame();
+});
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+
+function initGame() {
+  loom = new Loom();
+  selectedTrayIndex = null;
+  lastCrossings = null;
+  document.getElementById("resultsPanel").style.display = "none";
+
+  // Pick 5 random threads
+  const selected = randomThreads(5);
+
+  // Place 3 on the loom: center + 2 random ring positions
+  const ringPositions = HEX_POSITIONS.slice(1);
+  const shuffledRing = [...ringPositions].sort(() => Math.random() - 0.5);
+
+  loom.place(selected[0], 0, 0); // center
+  loom.place(selected[1], shuffledRing[0].q, shuffledRing[0].r);
+  loom.place(selected[2], shuffledRing[1].q, shuffledRing[1].r);
+
+  // Remaining 2 go to tray
+  trayThreads = [selected[3], selected[4]];
+
+  drawLoom();
+  renderTray();
+  updateHint();
+}
+
+// Start
+initGame();
+</script>
+
+</body>
+</html>
