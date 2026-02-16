@@ -36,10 +36,37 @@
     text-align: center;
     padding: 1.5rem 0 1rem;
   }
+  .header {
+    position: relative;
+  }
   .header h1 {
     font-size: 2rem;
     color: var(--accent);
     letter-spacing: 0.08em;
+  }
+  .sound-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    line-height: 1;
+  }
+  .sound-toggle:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .sound-toggle.muted {
+    color: var(--red);
+    border-color: var(--red);
+    opacity: 0.6;
   }
   .header .subtitle {
     color: var(--text-dim);
@@ -929,6 +956,7 @@
 <div class="header">
   <h1>tink</h1>
   <div class="subtitle">The Loom</div>
+  <button class="sound-toggle" id="soundToggle" title="Toggle sound">&#x1f50a;</button>
 </div>
 
 <div class="loom-container" style="position: relative;">
@@ -1480,6 +1508,88 @@ class Loom {
 
   static get POSITIONS() { return HEX_POSITIONS; }
 }
+
+// ============================================================
+// AUDIO — Web Audio API sound design
+// ============================================================
+
+const GameAudio = {
+  ctx: null,
+  enabled: !localStorage.getItem("tink-sound-muted"),
+
+  init() {
+    if (!this.ctx) {
+      try {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) {
+        // AudioContext not available (headless / test environment)
+        this.enabled = false;
+      }
+    }
+  },
+
+  playTone(freq, duration = 0.3, type = "sine", gain = 0.3) {
+    if (!this.enabled || !this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(gain, this.ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+      osc.connect(g).connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + duration);
+    } catch (e) {
+      // Gracefully ignore audio errors
+    }
+  },
+
+  // Per-stability tones (pentatonic: C D E G A)
+  harmony()   { this.playTone(523.25, 0.4, "sine", 0.15); },       // C5 soft
+  resonance() { this.playTone(659.25, 0.5, "triangle", 0.2); },    // E5 bright
+  tension()   { this.playTone(466.16, 0.3, "sawtooth", 0.12); },   // Bb4 dissonant
+  paradox() {
+    // Cluster chord: three dissonant tones
+    this.playTone(311.13, 0.4, "sawtooth", 0.1);  // Eb4
+    this.playTone(369.99, 0.4, "square", 0.08);    // F#4
+    this.playTone(415.30, 0.4, "sawtooth", 0.1);  // Ab4
+  },
+
+  leverPull() {
+    // Low rumble
+    this.playTone(82.41, 0.6, "sawtooth", 0.1);   // E2 rumble
+    setTimeout(() => this.playTone(110, 0.4, "sine", 0.08), 200);  // A2
+  },
+
+  discovery() {
+    // Ascending arpeggio C-E-G-C
+    this.playTone(523.25, 0.3, "sine", 0.2);       // C5
+    setTimeout(() => this.playTone(659.25, 0.3, "triangle", 0.2), 150);  // E5
+    setTimeout(() => this.playTone(783.99, 0.3, "sine", 0.2), 300);      // G5
+    setTimeout(() => this.playTone(1046.50, 0.5, "sine", 0.25), 450);    // C6
+  },
+
+  archetypeMatch() {
+    // Major chord hit
+    this.playTone(523.25, 0.5, "sine", 0.2);   // C5
+    this.playTone(659.25, 0.5, "sine", 0.15);  // E5
+    this.playTone(783.99, 0.5, "sine", 0.15);  // G5
+  },
+
+  threadCollect() {
+    // Quick ascending pip
+    this.playTone(880, 0.15, "sine", 0.1);   // A5
+    setTimeout(() => this.playTone(1046.50, 0.15, "sine", 0.1), 80);  // C6
+  },
+
+  shrineVisit() {
+    // Ethereal pad
+    this.playTone(392, 0.8, "sine", 0.1);     // G4
+    this.playTone(493.88, 0.8, "sine", 0.08); // B4
+    setTimeout(() => this.playTone(587.33, 0.6, "sine", 0.1), 300); // D5
+  },
+};
 
 // ============================================================
 // GAME STATE
@@ -2146,6 +2256,8 @@ function showThreadDraft(node) {
 function collectThread(thread) {
   if (wanderSatchel.length >= WANDER_SATCHEL_MAX) return;
   wanderSatchel.push(thread);
+  GameAudio.init();
+  GameAudio.threadCollect();
   updateSatchelDisplay();
   closeDraft();
 }
@@ -2227,6 +2339,8 @@ function pickShrineClue() {
 
 function showShrineClue(node) {
   wanderShrineOpen = true;
+  GameAudio.init();
+  GameAudio.shrineVisit();
   const overlay = document.getElementById("shrineOverlay");
   const panel = document.getElementById("shrinePanel");
   panel.innerHTML = "";
@@ -3002,6 +3116,10 @@ async function runActivationAnimation(crossings) {
   hintEl.textContent = "The loom stirs...";
   selectedTrayIndex = null;
 
+  // --- Audio: lever pull ---
+  GameAudio.init();
+  GameAudio.leverPull();
+
   // --- Phase 1: Charge-up glow (500ms) ---
   await animateProp(animOverlay, "chargeGlow", 0, 1, 500);
 
@@ -3052,6 +3170,9 @@ async function runActivationAnimation(crossings) {
       animOverlay.allHexVibrate = 0;
     }
 
+    // --- Audio: stability tone ---
+    if (GameAudio[stability]) GameAudio[stability]();
+
     await animateCustom(200, (t) => {
       const peak = t < 0.5 ? t * 2 : 2 - t * 2; // triangle wave: ramp up then down
       for (const g of animOverlay.hexGlows) g.alpha = peak * 0.8;
@@ -3096,6 +3217,9 @@ async function runActivationAnimation(crossings) {
       const isNewDiscovery = Codex.discover(codexData, cx.archetype.match, { requiredTraits });
       updateCodexBtnCount();
 
+      // --- Audio: archetype match ---
+      GameAudio.archetypeMatch();
+
       animOverlay.archetypeName = {
         x: midX, y: midY + 2,
         text: cx.archetype.match.name,
@@ -3104,6 +3228,9 @@ async function runActivationAnimation(crossings) {
       };
 
       if (isNewDiscovery) {
+        // --- Audio: first discovery ---
+        GameAudio.discovery();
+
         // --- First Discovery Ceremony ---
         const fullName = cx.archetype.match.name;
         const flavorText = cx.archetype.match.flavor || "";
@@ -4019,6 +4146,31 @@ document.getElementById("codexOverlay").addEventListener("click", function(e) {
 });
 
 updateCodexBtnCount();
+
+// ============================================================
+// SOUND TOGGLE
+// ============================================================
+
+(function initSoundToggle() {
+  const btn = document.getElementById("soundToggle");
+  if (localStorage.getItem("tink-sound-muted")) {
+    btn.classList.add("muted");
+    btn.innerHTML = "&#x1f507;";
+  }
+  btn.addEventListener("click", () => {
+    GameAudio.init();
+    GameAudio.enabled = !GameAudio.enabled;
+    if (GameAudio.enabled) {
+      localStorage.removeItem("tink-sound-muted");
+      btn.classList.remove("muted");
+      btn.innerHTML = "&#x1f50a;";
+    } else {
+      localStorage.setItem("tink-sound-muted", "1");
+      btn.classList.add("muted");
+      btn.innerHTML = "&#x1f507;";
+    }
+  });
+})();
 
 // ============================================================
 // INITIALIZATION
