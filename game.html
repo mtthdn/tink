@@ -3146,6 +3146,7 @@ function startRun() {
   runState.cycleArchetypes = [];
   runState.newDiscoveries = 0;
   runState.weavingHistory = [];
+  runState.goldenMoments = 0;
   runState.active = true;
 
   codexData.stats.runs++;
@@ -3459,6 +3460,8 @@ function startWeave(collectedThreads) {
   animOverlay.nearMissLabel = null;
   animOverlay.flavorLabel = null;
   animOverlay.discoveryBurst = null;
+  animOverlay.epicBeatLabel = null;
+  animOverlay.goldenGlow = 0;
 
   const activateBtn = document.getElementById("activateBtn");
   const resetBtn = document.getElementById("resetBtn");
@@ -4027,6 +4030,35 @@ function drawAnimOverlay() {
     ctx.stroke();
     ctx.restore();
   }
+
+  // Epic beat label (bottom of canvas)
+  if (o.epicBeatLabel) {
+    const eb = o.epicBeatLabel;
+    ctx.save();
+    ctx.globalAlpha = eb.alpha;
+    ctx.font = "italic 10px 'Segoe UI', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#0a0a0f";
+    ctx.fillText(eb.text, eb.x + 1, eb.y + 1);
+    ctx.fillStyle = eb.color;
+    ctx.shadowColor = eb.color;
+    ctx.shadowBlur = 6;
+    ctx.fillText(eb.text, eb.x, eb.y);
+    ctx.restore();
+  }
+
+  // Golden glow border
+  if (o.goldenGlow > 0) {
+    ctx.save();
+    ctx.globalAlpha = o.goldenGlow * 0.5;
+    ctx.strokeStyle = "#d4a84e";
+    ctx.lineWidth = 3;
+    ctx.shadowColor = "#d4a84e";
+    ctx.shadowBlur = 16;
+    ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+    ctx.restore();
+  }
 }
 
 // Helper: animate a property from start to end over durationMs using rAF
@@ -4339,6 +4371,26 @@ async function runActivationAnimation(crossings) {
         codexBtn.classList.add("discovery-pulse");
         setTimeout(() => codexBtn.classList.remove("discovery-pulse"), 1800);
 
+        // 6. Check projection unlock
+        const totalDiscovered = Object.keys(codexData.discovered).length;
+        for (const proj of PROJECTIONS) {
+          if (!proj.unlocked && totalDiscovered >= proj.unlocksAt) {
+            proj.unlocked = true;
+            const projDiv = document.createElement("div");
+            projDiv.style.cssText = "position:fixed;inset:0;z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,10,15,0.85);opacity:0;transition:opacity 0.5s;pointer-events:none;";
+            projDiv.innerHTML = '<div style="color:' + proj.palette.baseHue + ';font-size:0.85rem;font-style:italic;margin-bottom:0.8rem;">A new way of seeing awakens...</div>'
+              + '<div style="color:' + proj.palette.baseHue + ';font-size:1.3rem;font-weight:600;">' + proj.name + '</div>'
+              + '<div style="color:var(--text-dim);font-size:0.8rem;font-style:italic;margin-top:0.4rem;">' + proj.description + '</div>';
+            document.body.appendChild(projDiv);
+            requestAnimationFrame(() => { projDiv.style.opacity = "1"; });
+            await animDelay(2500);
+            projDiv.style.opacity = "0";
+            await animDelay(500);
+            projDiv.remove();
+            break;
+          }
+        }
+
         // Fade out ceremony elements
         await animateCustom(400, (t) => {
           animOverlay.archetypeName.alpha = 1 - t;
@@ -4463,6 +4515,83 @@ async function runActivationAnimation(crossings) {
     // Brief gap before next crossing (unless last)
     if (i < crossings.length - 1) {
       await animateCustom(200, (t) => { tickSparkles(); });
+    }
+
+    // --- Epic beat ambiance (per-crossing check) ---
+    if (runState.active && runState.weavingHistory.length > 0) {
+      const prevLen = runState.weavingHistory.length - 1;
+      const prevHistory = runState.weavingHistory.slice(0, prevLen);
+      const currHistory = runState.weavingHistory;
+
+      const tapestryEpics = EPICS.filter(e => e.projection === "tapestry");
+      const prevEval = evaluateAllEpics(tapestryEpics, prevHistory);
+      const currEval = evaluateAllEpics(tapestryEpics, currHistory);
+
+      for (let ei = 0; ei < currEval.length; ei++) {
+        const curr = currEval[ei];
+        const prevByName = prevEval.find(p => p.epic.name === curr.epic.name);
+        const prevBeats = prevByName ? prevByName.completedBeats : 0;
+
+        if (curr.completedBeats > prevBeats) {
+          const newBeatIdx = curr.completedBeats - 1;
+          const matchedBeat = curr.matched[newBeatIdx];
+
+          if (matchedBeat && matchedBeat.crossing) {
+            const beatText = matchedBeat.beat.onMatch;
+            const tierColors = { common: "#8a8a9e", uncommon: "#5cb85c", rare: "#7eb8da", mythic: "#9b7ed8", legendary: "#d4a84e" };
+            const color = tierColors[curr.epic.tier] || "#8a8a9e";
+
+            const ebCx = canvas.width / 2;
+            const ebCy = canvas.height - 30;
+
+            animOverlay.epicBeatLabel = { x: ebCx, y: ebCy, text: beatText, alpha: 0, color };
+
+            await animateCustom(300, (t) => {
+              animOverlay.epicBeatLabel.alpha = t * 0.8;
+              tickSparkles();
+            });
+            await animateCustom(800, (t) => { tickSparkles(); });
+            await animateCustom(400, (t) => {
+              animOverlay.epicBeatLabel.alpha = 0.8 * (1 - t);
+              tickSparkles();
+            });
+            animOverlay.epicBeatLabel = null;
+
+            const alignment = scoreAxisAlignment(matchedBeat.beat, matchedBeat.crossing);
+            if (alignment.golden) {
+              runState.goldenMoments++;
+              const goldenIntensity = Math.min(0.3 + runState.goldenMoments * 0.15, 1.0);
+
+              animOverlay.goldenGlow = 0;
+              spawnSparkles(ebCx, ebCy - 20, "#d4a84e", 8);
+              await animateCustom(400, (t) => {
+                animOverlay.goldenGlow = t * goldenIntensity;
+                tickSparkles();
+              });
+
+              const goldenTexts = [
+                "the threads align...",
+                "the threads sing together...",
+                "every axis converges...",
+              ];
+              const goldenText = goldenTexts[Math.min(runState.goldenMoments - 1, goldenTexts.length - 1)];
+              animOverlay.epicBeatLabel = { x: ebCx, y: ebCy, text: goldenText, alpha: 0, color: "#d4a84e" };
+              await animateCustom(300, (t) => {
+                animOverlay.epicBeatLabel.alpha = t * 0.9;
+                tickSparkles();
+              });
+              await animateCustom(600, (t) => { tickSparkles(); });
+              await animateCustom(400, (t) => {
+                animOverlay.epicBeatLabel.alpha = 0.9 * (1 - t);
+                animOverlay.goldenGlow = goldenIntensity * (1 - t);
+                tickSparkles();
+              });
+              animOverlay.epicBeatLabel = null;
+              animOverlay.goldenGlow = 0;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -5270,6 +5399,59 @@ function renderCodexPanel() {
 
     group.appendChild(entries);
     panel.appendChild(group);
+  }
+
+  // --- Epics section ---
+  const epicHeader = document.createElement("div");
+  epicHeader.className = "codex-tier-header";
+  epicHeader.style.color = "var(--gold)";
+  epicHeader.style.marginTop = "1.5rem";
+  epicHeader.textContent = "Epics";
+  panel.appendChild(epicHeader);
+
+  const completedEpics = codexData.epics ? Object.keys(codexData.epics) : [];
+  if (completedEpics.length > 0) {
+    for (const name of completedEpics) {
+      const data = codexData.epics[name];
+      const entry = document.createElement("div");
+      entry.className = "codex-entry discovered tier-e-" + data.tier;
+      const nameDiv = document.createElement("div");
+      nameDiv.className = "codex-entry-name";
+      nameDiv.innerHTML = '<span class="tier-' + data.tier + '">' + name + '</span>';
+      entry.appendChild(nameDiv);
+      const projLabel = document.createElement("div");
+      projLabel.style.cssText = "font-size:0.65rem;color:var(--text-dim);opacity:0.6;";
+      const projName = PROJECTIONS.find(p => p.id === data.projection);
+      projLabel.textContent = projName ? "seen through " + projName.name : "";
+      entry.appendChild(projLabel);
+      panel.appendChild(entry);
+    }
+  } else {
+    const empty = document.createElement("div");
+    empty.style.cssText = "color:var(--text-dim);font-size:0.75rem;font-style:italic;opacity:0.5;margin-top:0.5rem;";
+    empty.textContent = "No epics completed yet.";
+    panel.appendChild(empty);
+  }
+
+  // Locked projections
+  const lockedProjs = PROJECTIONS.filter(p => !p.unlocked);
+  if (lockedProjs.length > 0) {
+    const projHeader = document.createElement("div");
+    projHeader.className = "codex-tier-header";
+    projHeader.style.cssText = "color:var(--text-dim);margin-top:1rem;opacity:0.5;";
+    projHeader.textContent = "Projections";
+    panel.appendChild(projHeader);
+
+    for (const proj of lockedProjs) {
+      const entry = document.createElement("div");
+      entry.className = "codex-entry undiscovered";
+      const unknown = document.createElement("div");
+      unknown.className = "codex-entry-unknown";
+      const remaining = proj.unlocksAt - Object.keys(codexData.discovered).length;
+      unknown.textContent = "??? \u2014 Discover " + remaining + " more archetypes";
+      entry.appendChild(unknown);
+      panel.appendChild(entry);
+    }
   }
 
   updateCodexBtnCount();
