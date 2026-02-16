@@ -1709,6 +1709,13 @@ async function runActivationAnimation(crossings) {
 
     // --- 2d: Archetype name fades in (200ms) ---
     if (cx.archetype.match) {
+      // Record discovery in codex
+      const catalogEntry = CATALOG.find(a => a.name === cx.archetype.match.name);
+      const requiredTraits = catalogEntry
+        ? Object.keys(catalogEntry.required).filter(k => k !== "_minConflicts")
+        : [];
+      const isNewDiscovery = Codex.discover(codexData, cx.archetype.match, { requiredTraits });
+
       animOverlay.archetypeName = {
         x: midX, y: midY + 2,
         text: cx.archetype.match.name,
@@ -2125,6 +2132,13 @@ function renderResults(crossings) {
     content.appendChild(div);
   }
 
+  // Codex progress summary
+  const codexDiv = document.createElement("div");
+  codexDiv.style.cssText = "text-align: center; margin-top: 0.8rem; font-size: 0.75rem; color: #6e6e8e; font-style: italic;";
+  const discovered = Object.keys(codexData.discovered).length;
+  codexDiv.textContent = "Codex: " + discovered + " / " + CATALOG.length + " discovered";
+  content.appendChild(codexDiv);
+
   panel.style.display = "block";
 }
 
@@ -2310,10 +2324,57 @@ document.getElementById("resetBtn").addEventListener("click", () => {
 });
 
 // ============================================================
+// CODEX — persistent discovery tracking via localStorage
+// ============================================================
+
+const Codex = {
+  KEY: "tink-codex-v1",
+
+  load() {
+    const raw = localStorage.getItem(this.KEY);
+    return raw ? JSON.parse(raw) : { discovered: {}, hints: {}, stats: { runs: 0, totalDiscoveries: 0 } };
+  },
+
+  save(codex) {
+    localStorage.setItem(this.KEY, JSON.stringify(codex));
+  },
+
+  discover(codex, archetype, crossingDetails) {
+    const isNew = !(archetype.name in codex.discovered);
+    codex.discovered[archetype.name] = {
+      name: archetype.name,
+      tier: archetype.tier,
+      flavor: archetype.flavor,
+      firstDiscovered: codex.discovered[archetype.name]?.firstDiscovered || Date.now(),
+      timesProduced: (codex.discovered[archetype.name]?.timesProduced || 0) + 1,
+      requiredTraits: crossingDetails.requiredTraits,
+    };
+    if (isNew) codex.stats.totalDiscoveries++;
+    this.save(codex);
+    return isNew;
+  },
+
+  addHint(codex, hintText, archetypeName) {
+    codex.hints[archetypeName] = { text: hintText, found: Date.now() };
+    this.save(codex);
+  },
+
+  getCompletionRatio(codex, totalArchetypes) {
+    return Object.keys(codex.discovered).length / totalArchetypes;
+  },
+};
+
+let codexData = Codex.load();
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 
 function initGame() {
+  // Track session in codex
+  codexData.stats.runs++;
+  Codex.save(codexData);
+
   // Unlock UI and clear animation state
   loomLocked = false;
   if (activationAnimRAF) {
