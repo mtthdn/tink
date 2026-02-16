@@ -186,6 +186,24 @@
   }
   .footer a { color: var(--text-dim); }
 
+  /* Play button */
+  .play-btn {
+    display: inline-block;
+    margin-top: 1.2rem;
+    padding: 0.8rem 2.5rem;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bg);
+    background: var(--gold);
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .play-btn:hover { background: #e0b860; transform: translateY(-1px); border-bottom-color: transparent; }
+
   /* Loom hex diagram */
   .loom-svg { display: block; margin: 1.5rem auto; }
 </style>
@@ -196,6 +214,7 @@
   <span class="hero-symbol">&#x1F9F5;</span>
   <h1>tink</h1>
   <div class="subtitle">A Tinker's Loom</div>
+  <a href="game.html" class="play-btn">Play</a>
 </div>
 
 <p>You are a tinker-weaver. You find threads in a shifting world — each thread is a fragment of <em>something</em>: a personality, a material, an event, a rule. You bring them back to your loom and connect them together. Where threads cross, something <em>happens</em> — not because you programmed it, but because the threads' natures demanded it.</p>
@@ -270,11 +289,19 @@
 
 <h2>Three-Phase Loop</h2>
 
-<p><strong>Wander</strong> — Explore a procedural, shifting world. Find threads. Encounter clues about undiscovered archetypes. Choose your path through a node-map.</p>
+<p><strong>Wander</strong> — Explore a procedural, shifting world. Find threads. Visit shrines for archetype clues. Choose your path through a node-map.</p>
 
 <p><strong>Weave</strong> — Place threads on the loom. Drag connections. Preview unified traits on hover, but not the archetype outcome. Spatial arrangement matters.</p>
 
 <p><strong>Activate</strong> — Pull the lever. Energy flows through threads, crossings resolve center-outward. Cascade chains create unexpected results. Watch your tapestry come alive.</p>
+
+<h2>The Supple Fabric</h2>
+
+<p>Hidden in the weave are <strong>epics</strong> — narrative arcs that evaluate against your weaving history. Each epic is a sequence of beats with constraints: "a crossing with tension and volatile traits, then a cascade of depth 2, then a paradox that produces an archetype." Twelve epics weave through three <strong>projections</strong> — different lenses on the same history.</p>
+
+<p>When the music, the visuals, and the narrative text all align with a crossing's stability — when every axis says the same thing — that's a <strong>golden moment</strong>. The game doesn't tell you this is happening. You feel it.</p>
+
+<p>At the end of each run, the tapestry speaks: completed epics are revealed, partial matches show how close you came, and hidden epics remain for next time. The same weaving history can satisfy multiple epics to different degrees. New projections, unlocked through discovery, retroactively reinterpret everything.</p>
 
 <h2>Some Archetypes</h2>
 
@@ -340,10 +367,11 @@
 <h2>Build Progress</h2>
 
 <div class="stats">
-  <div class="stat"><span class="stat-value">66</span><span class="stat-label">Tests passing</span></div>
+  <div class="stat"><span class="stat-value">188</span><span class="stat-label">Tests passing</span></div>
   <div class="stat"><span class="stat-value">22</span><span class="stat-label">Archetypes</span></div>
   <div class="stat"><span class="stat-value">30</span><span class="stat-label">Threads</span></div>
-  <div class="stat"><span class="stat-value">9</span><span class="stat-label">Commits</span></div>
+  <div class="stat"><span class="stat-value">12</span><span class="stat-label">Epics</span></div>
+  <div class="stat"><span class="stat-value">4</span><span class="stat-label">Projections</span></div>
 </div>
 
 <div class="phases">
@@ -352,30 +380,35 @@
     <div class="phase-label">Phase 1 — Engine</div>
     <div class="phase-tasks">5/5 tasks</div>
   </div>
-  <div class="phase current">
-    <div class="phase-icon">&#x1F527;</div>
+  <div class="phase done">
+    <div class="phase-icon">&#x2705;</div>
     <div class="phase-label">Phase 2 — Visual Prototype</div>
-    <div class="phase-tasks">0/5 tasks</div>
+    <div class="phase-tasks">5/5 tasks</div>
   </div>
-  <div class="phase">
-    <div class="phase-icon">&#x1F4D6;</div>
+  <div class="phase done">
+    <div class="phase-icon">&#x2705;</div>
     <div class="phase-label">Phase 3 — Codex &amp; Discovery</div>
-    <div class="phase-tasks">0/3 tasks</div>
+    <div class="phase-tasks">3/3 tasks</div>
   </div>
-  <div class="phase">
-    <div class="phase-icon">&#x1F30D;</div>
+  <div class="phase done">
+    <div class="phase-icon">&#x2705;</div>
     <div class="phase-label">Phase 4 — Wander Phase</div>
-    <div class="phase-tasks">0/3 tasks</div>
+    <div class="phase-tasks">3/3 tasks</div>
   </div>
-  <div class="phase">
-    <div class="phase-icon">&#x2728;</div>
+  <div class="phase done">
+    <div class="phase-icon">&#x2705;</div>
     <div class="phase-label">Phase 5 — Juice &amp; Sound</div>
-    <div class="phase-tasks">0/2 tasks</div>
+    <div class="phase-tasks">2/2 tasks</div>
   </div>
-  <div class="phase">
-    <div class="phase-icon">&#x1F3AE;</div>
-    <div class="phase-label">Phase 6 — Run Structure &amp; Deploy</div>
-    <div class="phase-tasks">0/5 tasks</div>
+  <div class="phase done">
+    <div class="phase-icon">&#x2705;</div>
+    <div class="phase-label">Phase 6 — Run Structure</div>
+    <div class="phase-tasks">2/2 tasks</div>
+  </div>
+  <div class="phase done">
+    <div class="phase-icon">&#x2705;</div>
+    <div class="phase-label">Phase 7 — Epic Projections</div>
+    <div class="phase-tasks">4/4 tasks</div>
   </div>
 </div>
 
