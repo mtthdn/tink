@@ -2706,18 +2706,17 @@ function renderCodexPanel() {
         // Undiscovered entry
         entry.className = "codex-entry undiscovered";
 
-        const unknown = document.createElement("div");
-        unknown.className = "codex-entry-unknown";
-        unknown.textContent = "???";
-        entry.appendChild(unknown);
-
-        // Show hint if available
         const hint = codexData.hints[arch.name];
         if (hint) {
           const hintDiv = document.createElement("div");
           hintDiv.className = "codex-entry-hint";
           hintDiv.textContent = hint.text;
           entry.appendChild(hintDiv);
+        } else {
+          const unknown = document.createElement("div");
+          unknown.className = "codex-entry-unknown";
+          unknown.textContent = "???";
+          entry.appendChild(unknown);
         }
       }
 
