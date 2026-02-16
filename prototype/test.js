@@ -283,6 +283,18 @@ section("Cascade: traits inject into neighboring crossings");
   ok(true, "Cascade resolution completes without error");
 }
 
+// ═══ Archetype: cascade-only legendaries ═══
+section("Archetype: cascade-only legendaries");
+{
+  const catalog = getCatalog();
+  const legendaries = catalog.filter(a => a.tier === "legendary");
+  ok(legendaries.length >= 3, "At least 3 legendary archetypes exist");
+  ok(legendaries.every(a => Object.keys(a.required).length >= 5),
+    "Legendaries require 5+ traits (impossible from single crossing)");
+  ok(legendaries.every(a => a.cascade),
+    "All legendaries have cascade fields");
+}
+
 // ═══ Summary ═══
 console.log(`\n${B}\u2500\u2500 Results \u2500\u2500${D}`);
 console.log(`  Total:  ${total}`);

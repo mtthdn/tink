@@ -150,6 +150,29 @@ const CATALOG = [
     flavor: "Focuses emptiness until it cuts.",
     cascade: { cold: true, sharp: true },
   },
+
+  // --- Legendary (cascade-only) ---
+  {
+    name: "Tapestry of Ages",
+    required: { persistent: true, vast: true, emotional: true, bright: true, organic: true },
+    cascade: { persistent: true, vast: true, calm: true },
+    tier: "legendary",
+    flavor: "Every thread that ever was, remembered in a single weave.",
+  },
+  {
+    name: "Paradox Engine",
+    required: { _minConflicts: 3, mechanical: true, persistent: true, volatile: true, emotional: true },
+    cascade: { volatile: true, mechanical: true, sharp: true },
+    tier: "legendary",
+    flavor: "It runs on impossibility. Each contradiction powers the next.",
+  },
+  {
+    name: "The Unraveling",
+    required: { ephemeral: true, vast: true, sharp: true, volatile: true, emotional: true },
+    cascade: { ephemeral: true, volatile: true },
+    tier: "legendary",
+    flavor: "Not destruction. Transformation so fast it looks like ending.",
+  },
 ];
 
 /**
@@ -170,7 +193,7 @@ export function matchArchetype(unificationResult) {
   }
 
   // Sort by specificity-weighted score desc, then tier rarity
-  const tierOrder = { mythic: 0, rare: 1, uncommon: 2, common: 3 };
+  const tierOrder = { legendary: -1, mythic: 0, rare: 1, uncommon: 2, common: 3 };
   candidates.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     return (tierOrder[a.tier] ?? 4) - (tierOrder[b.tier] ?? 4);
@@ -225,9 +248,10 @@ function scoreMatch(flat, archetype, conflicts) {
   }
 
   const ratio = total > 0 ? matched / total : 0;
-  // Specificity bonus: more required traits = higher score when ratio is similar
+  // Specificity bonus: more matched traits = higher score, ratio gives small boost
   // A 3/3 match (score=3.3) beats a 2/2 match (score=2.2)
-  const score = ratio * (total + total * 0.1);
+  // But a 3/5 partial (score≈3.18) never beats a 3/3 perfect (score=3.3)
+  const score = matched * (1 + ratio * 0.1);
   return { matched, total, ratio, score };
 }
 
