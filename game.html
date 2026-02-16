@@ -2478,6 +2478,8 @@ function startWeave(collectedThreads) {
   trayEl.classList.remove("tray-dimmed");
   if (trayLabel) trayLabel.style.opacity = "";
   canvas.classList.remove("shake");
+  canvas.style.filter = "";
+  canvas.style.transform = "";
   document.getElementById("paradoxVignette").classList.remove("active");
   document.getElementById("codexBtn").classList.remove("discovery-pulse");
   resultsPanel.classList.remove("fade-in");
@@ -3095,6 +3097,43 @@ function tickSparkles() {
   animOverlay.sparkles = animOverlay.sparkles.filter(sp => sp.alpha > 0.05);
 }
 
+// --- Screen shake (CSS transform, doesn't interfere with canvas draws) ---
+function screenShake(intensity = 5, duration = 200) {
+  const start = performance.now();
+  function shake(t) {
+    const elapsed = t - start;
+    if (elapsed > duration) { canvas.style.transform = ""; return; }
+    const decay = 1 - elapsed / duration;
+    const dx = (Math.random() - 0.5) * intensity * decay * 2;
+    const dy = (Math.random() - 0.5) * intensity * decay * 2;
+    canvas.style.transform = `translate(${dx}px, ${dy}px)`;
+    requestAnimationFrame(shake);
+  }
+  requestAnimationFrame(shake);
+}
+
+// --- Brightness flash (brief CSS filter pulse for cascade waves) ---
+function brightFlash(duration = 200) {
+  const start = performance.now();
+  const prevFilter = canvas.style.filter || "";
+  function flash(t) {
+    const elapsed = t - start;
+    if (elapsed > duration) {
+      // Restore previous filter (saturation may still be active)
+      canvas.style.filter = prevFilter;
+      return;
+    }
+    const progress = elapsed / duration;
+    const brightness = 1.3 - 0.3 * progress; // 1.3 -> 1.0
+    // Preserve existing saturation if present
+    const satMatch = prevFilter.match(/saturate\(([^)]+)\)/);
+    const satPart = satMatch ? `saturate(${satMatch[1]})` : "";
+    canvas.style.filter = `${satPart} brightness(${brightness})`.trim();
+    requestAnimationFrame(flash);
+  }
+  requestAnimationFrame(flash);
+}
+
 // ============================================================
 // ANIMATED ACTIVATION SEQUENCE
 // ============================================================
@@ -3128,10 +3167,16 @@ async function runActivationAnimation(crossings) {
   await animateProp(animOverlay, "chargeGlow", 1, 0.15, 200);
 
   // --- Phase 2: Sequential crossing resolution ---
+  const cascadeEscalation = (index) => 1 + index * 0.3;
   for (let i = 0; i < crossings.length; i++) {
     const cx = crossings[i];
     const stability = cx.unification.stability;
     const vfx = STABILITY_VFX[stability];
+
+    // Cascade depth escalation: saturation ramps with each crossing
+    const sat = Math.min(1.0 + i * 0.15, 2.0);
+    const satValue = stability === "paradox" ? Math.max(sat, 1.8) : sat;
+    canvas.style.filter = `saturate(${satValue.toFixed(2)})`;
 
     const pxA = hexToPixel(cx.threadA.position.q, cx.threadA.position.r);
     const pxB = hexToPixel(cx.threadB.position.q, cx.threadB.position.r);
@@ -3157,17 +3202,20 @@ async function runActivationAnimation(crossings) {
       { cx: pxB.x, cy: pxB.y, alpha: 0, color: vfx.color },
     ];
 
-    // Stability-specific effects
+    // Stability-specific effects (with cascade escalation)
+    const escalation = cascadeEscalation(i);
     if (stability === "resonance") {
       spawnSparkles(pxA.x, pxA.y, vfx.color, 8);
       spawnSparkles(pxB.x, pxB.y, vfx.color, 8);
+      screenShake(1 * escalation, 100);
     }
     if (stability === "tension") {
-      canvas.classList.add("shake");
+      screenShake(3 * escalation, 200);
     }
     if (stability === "paradox") {
       document.getElementById("paradoxVignette").classList.add("active");
       animOverlay.allHexVibrate = 0;
+      screenShake(8 * escalation, 400);
     }
 
     // --- Audio: stability tone ---
@@ -3180,7 +3228,6 @@ async function runActivationAnimation(crossings) {
       tickSparkles();
     });
 
-    canvas.classList.remove("shake");
     if (stability === "paradox") {
       animOverlay.allHexVibrate = 0;
       // Keep vignette a moment then fade
@@ -3318,6 +3365,8 @@ async function runActivationAnimation(crossings) {
           alpha: 0.8,
           color: "#d4a84e",
         };
+        // Cascade chain brightness flash
+        brightFlash(200);
         await animateCustom(300, (t) => {
           const cr = animOverlay.cascadeRipple;
           cr.radius = 5 + t * (cr.maxRadius - 5);
@@ -3398,6 +3447,10 @@ async function runActivationAnimation(crossings) {
   }
 
   // --- Phase 3: Final pause and show results ---
+  // Reset canvas visual effects (saturation, brightness)
+  canvas.style.filter = "";
+  canvas.style.transform = "";
+
   // Fade out charge glow completely
   await animateProp(animOverlay, "chargeGlow", animOverlay.chargeGlow, 0, 300);
 
