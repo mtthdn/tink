@@ -3,7 +3,7 @@
 
 import { unify, flattenUnified } from "./unify.js";
 import { matchArchetype, getCatalog } from "./archetypes.js";
-import { Loom } from "./loom.js";
+import { Loom, LOOM_TIERS } from "./loom.js";
 import { getAllThreads } from "./threads.js";
 
 let passed = 0, failed = 0, total = 0;
@@ -227,7 +227,7 @@ section("Archetype: match includes cascade");
 // ═══ Cascade: archetype output modifies downstream crossings ═══
 section("Cascade: archetype output modifies downstream crossings");
 {
-  const loom = new Loom();
+  const loom = new Loom("medium");
   const threads = getAllThreads();
   const find = (name) => threads.find(t => t.name === name);
 
@@ -254,7 +254,7 @@ section("Cascade: archetype output modifies downstream crossings");
 // ═══ Cascade: traits inject into neighboring crossings ═══
 section("Cascade: traits inject into neighboring crossings");
 {
-  const loom = new Loom();
+  const loom = new Loom("medium");
   const threads = getAllThreads();
   const find = (name) => threads.find(t => t.name === name);
 
@@ -293,6 +293,87 @@ section("Archetype: cascade-only legendaries");
     "Legendaries require 5+ traits (impossible from single crossing)");
   ok(legendaries.every(a => a.cascade),
     "All legendaries have cascade fields");
+}
+
+// ═══ Loom tiers ═══
+section("Loom tiers: size definitions");
+{
+  eq(LOOM_TIERS.small.positions.length, 3, "Small loom has 3 positions");
+  eq(LOOM_TIERS.medium.positions.length, 7, "Medium loom has 7 positions");
+  eq(LOOM_TIERS.large.positions.length, 12, "Large loom has 12 positions");
+  eq(LOOM_TIERS.full.positions.length, 19, "Full loom has 19 positions");
+}
+
+section("Loom tiers: constructor defaults");
+{
+  const loom = new Loom();
+  eq(loom.tier, "small", "Default tier is small");
+  eq(loom.positions.length, 3, "Default loom has 3 positions");
+}
+
+section("Loom tiers: explicit tier");
+{
+  const small = new Loom("small");
+  eq(small.positions.length, 3, "Small loom constructed with 3 cells");
+
+  const medium = new Loom("medium");
+  eq(medium.positions.length, 7, "Medium loom constructed with 7 cells");
+
+  const large = new Loom("large");
+  eq(large.positions.length, 12, "Large loom constructed with 12 cells");
+
+  const full = new Loom("full");
+  eq(full.positions.length, 19, "Full loom constructed with 19 cells");
+}
+
+section("Loom tiers: placement respects tier boundaries");
+{
+  const small = new Loom("small");
+  // (0,0) and (1,0) are valid in small
+  small.place({ name: "Test", nature: { bright: true } }, 0, 0);
+  ok(small.grid.has("0,0"), "Can place at center in small loom");
+
+  let threwOnInvalid = false;
+  try {
+    small.place({ name: "Test2", nature: {} }, -1, 0);
+  } catch (e) {
+    threwOnInvalid = true;
+  }
+  ok(threwOnInvalid, "Cannot place at (-1,0) in small loom (not in tier)");
+
+  const medium = new Loom("medium");
+  medium.place({ name: "Test3", nature: {} }, -1, 0);
+  ok(medium.grid.has("-1,0"), "Can place at (-1,0) in medium loom");
+}
+
+section("Loom tiers: tier affects crossings");
+{
+  const threads = getAllThreads();
+  const find = (name) => threads.find(t => t.name === name);
+
+  // Small loom: 3 cells, place at all 3 -> max crossings from adjacency
+  const small = new Loom("small");
+  small.place(find("Ember"), 0, 0);
+  small.place(find("Glacier"), 1, 0);
+  small.place(find("Clockwork"), 0, 1);
+  const smallCrossings = small.activate();
+
+  // Medium loom with same 3 threads at same positions
+  const medium = new Loom("medium");
+  medium.place(find("Ember"), 0, 0);
+  medium.place(find("Glacier"), 1, 0);
+  medium.place(find("Clockwork"), 0, 1);
+  const mediumCrossings = medium.activate();
+
+  // Same threads at same positions should produce same crossings
+  eq(smallCrossings.length, mediumCrossings.length,
+    "Same thread placement produces same crossings regardless of tier");
+
+  // But medium allows more placements
+  medium.place(find("Tidepool"), -1, 0);
+  const expandedCrossings = medium.activate();
+  ok(expandedCrossings.length > mediumCrossings.length,
+    "More threads on medium loom produces more crossings");
 }
 
 // ═══ Summary ═══

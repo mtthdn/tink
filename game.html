@@ -960,7 +960,7 @@
 </div>
 
 <div class="loom-container" style="position: relative;">
-  <canvas id="loomCanvas" width="600" height="500"></canvas>
+  <canvas id="loomCanvas" width="600" height="560"></canvas>
   <div class="crossing-tooltip" id="crossingTooltip"></div>
 </div>
 
@@ -1377,8 +1377,8 @@ function getByRarity(rarity) {
 // ENGINE: loom.js
 // ============================================================
 
-const HEX_POSITIONS = [
-  { q: 0, r: 0 },   // center
+// Ring 1: 6 neighbors at distance 1
+const RING_1 = [
   { q: 1, r: 0 },   // east
   { q: 0, r: 1 },   // southeast
   { q: -1, r: 1 },  // southwest
@@ -1387,22 +1387,124 @@ const HEX_POSITIONS = [
   { q: 1, r: -1 },  // northeast
 ];
 
+// Ring 2: 12 cells at distance 2
+const RING_2 = [
+  { q: 2, r: 0 },   { q: 2, r: -1 },  { q: 2, r: -2 },
+  { q: 1, r: -2 },  { q: 0, r: -2 },  { q: -1, r: -1 },
+  { q: -2, r: 0 },  { q: -2, r: 1 },  { q: -2, r: 2 },
+  { q: -1, r: 2 },  { q: 0, r: 2 },   { q: 1, r: 1 },
+];
+
+// Partial ring 2: 5 cells for the "large" tier
+const RING_2_PARTIAL = [
+  { q: 2, r: -1 },  { q: 0, r: -2 },  { q: -2, r: 1 },
+  { q: -1, r: 2 },  { q: 1, r: 1 },
+];
+
+const LOOM_TIERS = {
+  small: {
+    positions: [
+      { q: 0, r: 0 },
+      { q: 1, r: 0 },
+      { q: 0, r: 1 },
+    ],
+    label: "Apprentice Loom",
+  },
+  medium: {
+    positions: [
+      { q: 0, r: 0 },
+      ...RING_1,
+    ],
+    label: "Journeyman Loom",
+  },
+  large: {
+    positions: [
+      { q: 0, r: 0 },
+      ...RING_1,
+      ...RING_2_PARTIAL,
+    ],
+    label: "Master Loom",
+  },
+  full: {
+    positions: [
+      { q: 0, r: 0 },
+      ...RING_1,
+      ...RING_2,
+    ],
+    label: "Grand Loom",
+  },
+};
+
+// Legacy alias — kept so static getter Loom.POSITIONS still works
+const HEX_POSITIONS = LOOM_TIERS.medium.positions;
+
+// Dynamic tier tracking for the current game session
+let currentLoomTier = "small";
+function getHexPositions() { return LOOM_TIERS[currentLoomTier].positions; }
+function getLoomLabel() { return LOOM_TIERS[currentLoomTier].label; }
+
+// Determine loom tier based on codex discoveries
+function computeLoomTier() {
+  const n = typeof codexData !== "undefined" ? Object.keys(codexData.discovered).length : 0;
+  if (n >= 15) return "full";
+  if (n >= 10) return "large";
+  if (n >= 5)  return "medium";
+  return "small";
+}
+
+// Check for loom expansion and apply if tier changed
+function checkLoomExpansion() {
+  const newTier = computeLoomTier();
+  if (newTier !== currentLoomTier) {
+    const oldTier = currentLoomTier;
+    currentLoomTier = newTier;
+    loom.upgradeTier(newTier);
+    showLoomExpandedMessage(oldTier, newTier);
+    drawLoom();
+    return true;
+  }
+  return false;
+}
+
+// Brief overlay message when loom grows
+function showLoomExpandedMessage(oldTier, newTier) {
+  const label = LOOM_TIERS[newTier].label;
+  const count = LOOM_TIERS[newTier].positions.length;
+  const msg = document.createElement("div");
+  msg.textContent = "Loom Expanded! " + label + " (" + count + " cells)";
+  msg.style.cssText = "position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);" +
+    "color:#d4a84e;font:bold 18px Georgia,serif;text-align:center;" +
+    "background:rgba(12,12,18,0.85);padding:12px 28px;border:1px solid #d4a84e;" +
+    "border-radius:8px;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.4s;";
+  document.body.appendChild(msg);
+  requestAnimationFrame(() => { msg.style.opacity = "1"; });
+  setTimeout(() => {
+    msg.style.opacity = "0";
+    setTimeout(() => msg.remove(), 500);
+  }, 2000);
+}
+
 const HEX_DIRS = [
   { q: 1, r: 0 }, { q: 0, r: 1 }, { q: -1, r: 1 },
   { q: -1, r: 0 }, { q: 0, r: -1 }, { q: 1, r: -1 },
 ];
 
 function posKey(q, r) { return `${q},${r}`; }
-function isValid(q, r) { return HEX_POSITIONS.some((p) => p.q === q && p.r === r); }
 
 class Loom {
-  constructor() {
+  constructor(tier = "small") {
+    this.tier = tier;
+    this.positions = LOOM_TIERS[tier].positions;
     this.grid = new Map();
     this.crossings = [];
   }
 
+  isValid(q, r) {
+    return this.positions.some((p) => p.q === q && p.r === r);
+  }
+
   place(thread, q, r) {
-    if (!isValid(q, r)) throw new Error(`Invalid hex position (${q}, ${r})`);
+    if (!this.isValid(q, r)) throw new Error(`Invalid hex position (${q}, ${r})`);
     const key = posKey(q, r);
     if (this.grid.has(key)) throw new Error(`Position (${q}, ${r}) occupied by "${this.grid.get(key).name}"`);
     this.grid.set(key, thread);
@@ -1427,10 +1529,16 @@ class Loom {
   }
 
   getPositions() {
-    return HEX_POSITIONS.map((p) => ({
+    return this.positions.map((p) => ({
       q: p.q, r: p.r,
       thread: this.grid.get(posKey(p.q, p.r)) || null,
     }));
+  }
+
+  // Upgrade to a new tier, preserving placed threads
+  upgradeTier(newTier) {
+    this.tier = newTier;
+    this.positions = LOOM_TIERS[newTier].positions;
   }
 
   activate() {
@@ -1489,9 +1597,9 @@ class Loom {
       }
     }
 
-    // Then ring cells
-    for (let i = 1; i < HEX_POSITIONS.length; i++) {
-      const pos = HEX_POSITIONS[i];
+    // Then remaining cells
+    for (let i = 1; i < this.positions.length; i++) {
+      const pos = this.positions[i];
       const thread = this.grid.get(posKey(pos.q, pos.r));
       if (!thread) continue;
       for (const nb of this.getNeighbors(pos.q, pos.r)) {
@@ -1507,6 +1615,7 @@ class Loom {
   }
 
   static get POSITIONS() { return HEX_POSITIONS; }
+  static get TIERS() { return LOOM_TIERS; }
 }
 
 // ============================================================
@@ -2484,7 +2593,9 @@ function startWeave(collectedThreads) {
   document.getElementById("codexBtn").classList.remove("discovery-pulse");
   resultsPanel.classList.remove("fade-in");
 
-  loom = new Loom();
+  // Determine loom tier from codex discoveries
+  currentLoomTier = computeLoomTier();
+  loom = new Loom(currentLoomTier);
   selectedTrayIndex = null;
   lastCrossings = null;
   resultsPanel.style.display = "none";
@@ -2494,7 +2605,7 @@ function startWeave(collectedThreads) {
     const threads = collectedThreads.slice();
     // Place up to 3 on loom, rest in tray
     const toPlace = Math.min(3, threads.length);
-    const ringPositions = HEX_POSITIONS.slice(1);
+    const ringPositions = getHexPositions().slice(1);
     const shuffledRing = [...ringPositions].sort(() => Math.random() - 0.5);
 
     if (toPlace >= 1) loom.place(threads[0], 0, 0);
@@ -2505,7 +2616,7 @@ function startWeave(collectedThreads) {
   } else {
     // Fallback: random threads (same as original initGame)
     const selected = randomThreads(5);
-    const ringPositions = HEX_POSITIONS.slice(1);
+    const ringPositions = getHexPositions().slice(1);
     const shuffledRing = [...ringPositions].sort(() => Math.random() - 0.5);
 
     loom.place(selected[0], 0, 0);
@@ -2534,7 +2645,7 @@ function hitTestHex(clientX, clientY) {
   const scaleY = canvas.height / rect.height;
   const mx = (clientX - rect.left) * scaleX;
   const my = (clientY - rect.top) * scaleY;
-  for (const pos of HEX_POSITIONS) {
+  for (const pos of getHexPositions()) {
     const px = hexToPixel(pos.q, pos.r);
     const dist = Math.sqrt((mx - px.x) ** 2 + (my - px.y) ** 2);
     if (dist < HEX_SIZE - 5) {
@@ -2776,7 +2887,12 @@ function drawLoom() {
       drawHexagon(px.x, px.y, HEX_SIZE - 2, "rgba(18, 18, 26, 0.5)", "#2a2a3a", 1);
 
       // Position label
-      const labels = { "0,0": "center", "1,0": "E", "0,1": "SE", "-1,1": "SW", "-1,0": "W", "0,-1": "NW", "1,-1": "NE" };
+      const labels = {
+        "0,0": "center",
+        "1,0": "E", "0,1": "SE", "-1,1": "SW", "-1,0": "W", "0,-1": "NW", "1,-1": "NE",
+        "2,0": "2E", "2,-1": "2ENE", "2,-2": "2NE", "1,-2": "2NNE", "0,-2": "2N", "-1,-1": "2NNW",
+        "-2,0": "2W", "-2,1": "2WSW", "-2,2": "2SW", "-1,2": "2SSW", "0,2": "2S", "1,1": "2SSE",
+      };
       ctx.fillStyle = "#333";
       ctx.font = "10px monospace";
       ctx.textAlign = "center";
@@ -2816,7 +2932,7 @@ function drawLoom() {
   ctx.fillStyle = "#3a3a4a";
   ctx.font = "italic 11px Georgia, serif";
   ctx.textAlign = "center";
-  ctx.fillText("7-cell hex loom", CENTER_X, canvas.height - 12);
+  ctx.fillText(getLoomLabel() + " (" + getHexPositions().length + " cells)", CENTER_X, canvas.height - 12);
 }
 
 // ============================================================
@@ -3465,6 +3581,14 @@ async function runActivationAnimation(crossings) {
   // Re-enable Reset button
   resetBtn.classList.remove("btn-locked");
   hintEl.textContent = "Crossing complete. Reset to weave again.";
+
+  // Check if codex discoveries warrant a loom expansion
+  const nextTier = computeLoomTier();
+  if (nextTier !== currentLoomTier) {
+    // Show expansion message -- the actual upgrade happens on next startWeave()
+    showLoomExpandedMessage(currentLoomTier, nextTier);
+    currentLoomTier = nextTier;
+  }
 }
 
 // ============================================================
@@ -3593,7 +3717,7 @@ canvas.addEventListener("click", (e) => {
   const my = e.clientY - rect.top;
 
   // Find which hex was clicked (point-in-hex test)
-  for (const pos of HEX_POSITIONS) {
+  for (const pos of getHexPositions()) {
     const px = hexToPixel(pos.q, pos.r);
     const dist = Math.sqrt((mx - px.x) ** 2 + (my - px.y) ** 2);
 

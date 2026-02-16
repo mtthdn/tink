@@ -1,14 +1,13 @@
 // loom.js — Hex-grid loom for tink
 //
-// 3-ring hex loom (7 cells): center + 6 neighbors
+// Expandable hex loom: 3 → 7 → 12 → 19 cells
 // Uses axial coordinates (q, r)
 
 import { unify } from "./unify.js";
 import { matchArchetype } from "./archetypes.js";
 
-// 7-cell hex: center (0,0) + 6 neighbors
-const HEX_POSITIONS = [
-  { q: 0, r: 0 },   // center
+// Ring 1: 6 neighbors at distance 1
+const RING_1 = [
   { q: 1, r: 0 },   // east
   { q: 0, r: 1 },   // southeast
   { q: -1, r: 1 },  // southwest
@@ -17,6 +16,68 @@ const HEX_POSITIONS = [
   { q: 1, r: -1 },  // northeast
 ];
 
+// Ring 2: 12 cells at distance 2
+const RING_2 = [
+  { q: 2, r: 0 },   // far east
+  { q: 2, r: -1 },  // far ENE
+  { q: 2, r: -2 },  // far NE
+  { q: 1, r: -2 },  // far NNE
+  { q: 0, r: -2 },  // far north
+  { q: -1, r: -1 }, // far NNW
+  { q: -2, r: 0 },  // far west
+  { q: -2, r: 1 },  // far WSW
+  { q: -2, r: 2 },  // far SW
+  { q: -1, r: 2 },  // far SSW
+  { q: 0, r: 2 },   // far south
+  { q: 1, r: 1 },   // far SSE
+];
+
+// Partial ring 2: 5 cells for the "large" tier (star pattern extending outward)
+const RING_2_PARTIAL = [
+  { q: 2, r: -1 },  // far ENE
+  { q: 0, r: -2 },  // far north
+  { q: -2, r: 1 },  // far WSW
+  { q: -1, r: 2 },  // far SSW
+  { q: 1, r: 1 },   // far SSE
+];
+
+const LOOM_TIERS = {
+  small: {
+    positions: [
+      { q: 0, r: 0 },   // center
+      { q: 1, r: 0 },   // east
+      { q: 0, r: 1 },   // southeast
+    ],
+    label: "Apprentice Loom",
+  },
+  medium: {
+    positions: [
+      { q: 0, r: 0 },   // center
+      ...RING_1,
+    ],
+    label: "Journeyman Loom",
+  },
+  large: {
+    positions: [
+      { q: 0, r: 0 },   // center
+      ...RING_1,
+      ...RING_2_PARTIAL,
+    ],
+    label: "Master Loom",
+  },
+  full: {
+    positions: [
+      { q: 0, r: 0 },   // center
+      ...RING_1,
+      ...RING_2,
+    ],
+    label: "Grand Loom",
+  },
+};
+
+// Legacy alias for backwards compatibility
+const HEX_POSITIONS = LOOM_TIERS.medium.positions;
+
 // 6 hex directions (axial)
 const HEX_DIRS = [
   { q: 1, r: 0 }, { q: 0, r: 1 }, { q: -1, r: 1 },
@@ -24,16 +85,23 @@ const HEX_DIRS = [
 ];
 
 function posKey(q, r) { return `${q},${r}`; }
-function isValid(q, r) { return HEX_POSITIONS.some((p) => p.q === q && p.r === r); }
+
+export { LOOM_TIERS };
 
 export class Loom {
-  constructor() {
+  constructor(tier = "small") {
+    this.tier = tier;
+    this.positions = LOOM_TIERS[tier].positions;
     this.grid = new Map();   // "q,r" -> thread
     this.crossings = [];
   }
 
+  isValid(q, r) {
+    return this.positions.some((p) => p.q === q && p.r === r);
+  }
+
   place(thread, q, r) {
-    if (!isValid(q, r)) throw new Error(`Invalid hex position (${q}, ${r})`);
+    if (!this.isValid(q, r)) throw new Error(`Invalid hex position (${q}, ${r})`);
     const key = posKey(q, r);
     if (this.grid.has(key)) throw new Error(`Position (${q}, ${r}) occupied by "${this.grid.get(key).name}"`);
     this.grid.set(key, thread);
@@ -52,10 +120,16 @@ export class Loom {
   }
 
   getPositions() {
-    return HEX_POSITIONS.map((p) => ({
+    return this.positions.map((p) => ({
       q: p.q, r: p.r,
       thread: this.grid.get(posKey(p.q, p.r)) || null,
     }));
+  }
+
+  // Upgrade to a new tier, preserving placed threads
+  upgradeTier(newTier) {
+    this.tier = newTier;
+    this.positions = LOOM_TIERS[newTier].positions;
   }
 
   /**
@@ -122,9 +196,9 @@ export class Loom {
       }
     }
 
-    // Then ring cells
-    for (let i = 1; i < HEX_POSITIONS.length; i++) {
-      const pos = HEX_POSITIONS[i];
+    // Then remaining cells
+    for (let i = 1; i < this.positions.length; i++) {
+      const pos = this.positions[i];
       const thread = this.grid.get(posKey(pos.q, pos.r));
       if (!thread) continue;
       for (const nb of this.getNeighbors(pos.q, pos.r)) {
@@ -140,4 +214,5 @@ export class Loom {
   }
 
   static get POSITIONS() { return HEX_POSITIONS; }
+  static get TIERS() { return LOOM_TIERS; }
 }
