@@ -373,6 +373,70 @@
     opacity: 1;
   }
 
+  /* Crossing hover tooltip */
+  .crossing-tooltip {
+    position: absolute;
+    pointer-events: none;
+    z-index: 500;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.7rem;
+    font-family: monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--text);
+    max-width: 240px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+  .crossing-tooltip.visible {
+    opacity: 1;
+  }
+  .crossing-tooltip .ct-header {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .crossing-tooltip .ct-trait {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.05rem 0;
+  }
+  .crossing-tooltip .ct-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .crossing-tooltip .ct-name {
+    flex: 1;
+  }
+  .crossing-tooltip .ct-tag {
+    font-size: 0.65rem;
+    opacity: 0.6;
+  }
+  .crossing-tooltip .ct-tag-resonance {
+    color: var(--cyan);
+    opacity: 1;
+  }
+  .crossing-tooltip .ct-tag-conflict {
+    color: var(--red);
+    opacity: 1;
+  }
+  .crossing-tooltip .ct-stability {
+    margin-top: 0.3rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.7rem;
+  }
+
   /* Results fade-in */
   .results-panel.fade-in {
     animation: results-fade 0.5s ease forwards;
@@ -390,8 +454,9 @@
   <div class="subtitle">The Loom</div>
 </div>
 
-<div class="loom-container">
+<div class="loom-container" style="position: relative;">
   <canvas id="loomCanvas" width="600" height="500"></canvas>
+  <div class="crossing-tooltip" id="crossingTooltip"></div>
 </div>
 
 <h2 class="tray-label">Thread Tray</h2>
@@ -1993,6 +2058,179 @@ function renderResults(crossings) {
 
   panel.style.display = "block";
 }
+
+// ============================================================
+// CROSSING HOVER PREVIEW
+// ============================================================
+
+const crossingTooltip = document.getElementById("crossingTooltip");
+let tooltipVisible = false;
+
+// Build list of crossing midpoints from current loom state
+function getCrossingMidpoints() {
+  const midpoints = [];
+  const positions = loom.getPositions();
+  const seen = new Set();
+
+  for (const posA of positions) {
+    if (!posA.thread) continue;
+    for (const posB of positions) {
+      if (!posB.thread) continue;
+      if (posA.q === posB.q && posA.r === posB.r) continue;
+
+      const dq = posB.q - posA.q;
+      const dr = posB.r - posA.r;
+      const isAdj = HEX_DIRS.some(d => d.q === dq && d.r === dr);
+      if (!isAdj) continue;
+
+      const keyA = posKey(posA.q, posA.r);
+      const keyB = posKey(posB.q, posB.r);
+      const pk = keyA < keyB ? keyA + "|" + keyB : keyB + "|" + keyA;
+      if (seen.has(pk)) continue;
+      seen.add(pk);
+
+      const pxA = hexToPixel(posA.q, posA.r);
+      const pxB = hexToPixel(posB.q, posB.r);
+
+      midpoints.push({
+        mx: (pxA.x + pxB.x) / 2,
+        my: (pxA.y + pxB.y) / 2,
+        threadA: posA.thread,
+        threadB: posB.thread,
+      });
+    }
+  }
+  return midpoints;
+}
+
+function buildTooltipContent(threadA, threadB) {
+  const natureA = threadA.nature;
+  const natureB = threadB.nature;
+  const result = unify(natureA, natureB);
+
+  // Build per-trait classification
+  const allTraits = Object.keys(result.unified);
+  const resSet = new Set(result.resonances);
+  const conSet = new Set(result.conflicts);
+  const keysA = new Set(Object.keys(natureA));
+  const keysB = new Set(Object.keys(natureB));
+
+  let html = '<div class="ct-header">' + threadA.name + ' &times; ' + threadB.name + '</div>';
+
+  for (const trait of allTraits) {
+    const color = TRAIT_COLORS[trait] || "#6e6e8e";
+    let tag = "";
+    let tagClass = "ct-tag";
+
+    if (resSet.has(trait)) {
+      tag = "resonance";
+      tagClass = "ct-tag ct-tag-resonance";
+    } else if (conSet.has(trait)) {
+      tag = "conflict";
+      tagClass = "ct-tag ct-tag-conflict";
+    } else if (keysA.has(trait) && !keysB.has(trait)) {
+      tag = "unique";
+    } else if (keysB.has(trait) && !keysA.has(trait)) {
+      tag = "unique";
+    } else {
+      tag = "unique";
+    }
+
+    html += '<div class="ct-trait">';
+    html += '<span class="ct-dot" style="background:' + color + '"></span>';
+    html += '<span class="ct-name" style="color:' + color + '">' + trait + '</span>';
+    html += '<span class="' + tagClass + '">' + tag + '</span>';
+    html += '</div>';
+  }
+
+  // Stability classification
+  const stabColors = {
+    harmony: "#5cb85c",
+    resonance: "#5cd8d8",
+    tension: "#d4d84e",
+    paradox: "#d85c5c",
+  };
+  const stabColor = stabColors[result.stability] || "#c8c8d8";
+  html += '<div class="ct-stability" style="color:' + stabColor + '">';
+  html += '&rarr; ' + result.stability;
+  html += '</div>';
+
+  return html;
+}
+
+canvas.addEventListener("mousemove", (e) => {
+  if (loomLocked) {
+    if (tooltipVisible) {
+      crossingTooltip.classList.remove("visible");
+      tooltipVisible = false;
+    }
+    return;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleY;
+
+  const HOVER_RADIUS = 25;
+  const midpoints = getCrossingMidpoints();
+  let closest = null;
+  let closestDist = Infinity;
+
+  for (const mp of midpoints) {
+    const dist = Math.sqrt((mx - mp.mx) ** 2 + (my - mp.my) ** 2);
+    if (dist < HOVER_RADIUS && dist < closestDist) {
+      closest = mp;
+      closestDist = dist;
+    }
+  }
+
+  if (closest) {
+    // Position tooltip near the midpoint, offset to avoid obscuring hexes
+    // Convert canvas coords back to CSS coords relative to the container
+    const cssX = closest.mx / scaleX;
+    const cssY = closest.my / scaleY;
+
+    crossingTooltip.innerHTML = buildTooltipContent(closest.threadA, closest.threadB);
+
+    // Position: offset 15px right and 10px up from midpoint
+    const offsetX = 15;
+    const offsetY = -10;
+    let left = cssX + offsetX;
+    let top = cssY + offsetY;
+
+    // Keep tooltip within canvas bounds (right edge check)
+    const tooltipWidth = 220; // approximate max width
+    if (left + tooltipWidth > rect.width) {
+      left = cssX - tooltipWidth - offsetX;
+    }
+    // Top edge check
+    if (top < 0) {
+      top = cssY + 15;
+    }
+
+    crossingTooltip.style.left = left + "px";
+    crossingTooltip.style.top = top + "px";
+
+    if (!tooltipVisible) {
+      crossingTooltip.classList.add("visible");
+      tooltipVisible = true;
+    }
+  } else {
+    if (tooltipVisible) {
+      crossingTooltip.classList.remove("visible");
+      tooltipVisible = false;
+    }
+  }
+});
+
+canvas.addEventListener("mouseleave", () => {
+  if (tooltipVisible) {
+    crossingTooltip.classList.remove("visible");
+    tooltipVisible = false;
+  }
+});
 
 // ============================================================
 // RESET
