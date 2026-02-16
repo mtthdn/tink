@@ -677,6 +677,169 @@
     margin-left: 0.3rem;
   }
 
+  /* Thread draft overlay */
+  .thread-draft-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 1200;
+    background: rgba(5, 5, 10, 0.85);
+    overflow-y: auto;
+    padding: 2rem 1rem;
+  }
+  .thread-draft-overlay.open {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .thread-draft-panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-width: 520px;
+    width: 100%;
+    padding: 1.5rem;
+  }
+  .thread-draft-title {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 1.1rem;
+    color: var(--gold);
+    margin-bottom: 0.4rem;
+    font-weight: 300;
+  }
+  .thread-draft-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    font-style: italic;
+  }
+  .thread-draft-cards {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .thread-draft-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    flex: 1;
+    min-width: 140px;
+  }
+  .thread-draft-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  .thread-draft-card .draft-card-name {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+  .thread-draft-card .rarity-badge {
+    font-family: monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-left: 0.4rem;
+  }
+  .rarity-badge.rarity-common { color: var(--text-dim); }
+  .rarity-badge.rarity-uncommon { color: var(--green); }
+  .rarity-badge.rarity-rare { color: var(--accent); }
+  .thread-draft-card .nature-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.4rem;
+  }
+  .thread-draft-card .nature-traits .trait-tag {
+    font-family: monospace;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 99px;
+    background: rgba(126, 184, 218, 0.1);
+    color: var(--cyan);
+    border: 1px solid rgba(126, 184, 218, 0.15);
+  }
+  .thread-draft-card.satchel-full-card {
+    opacity: 0.5;
+    cursor: default;
+    border-color: var(--border);
+  }
+  .thread-draft-card.satchel-full-card:hover {
+    transform: none;
+    border-color: var(--border);
+    box-shadow: none;
+  }
+  .thread-draft-skip {
+    display: inline-block;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .thread-draft-skip:hover {
+    color: var(--text);
+    border-color: var(--text-dim);
+  }
+  .satchel-full-notice {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.9rem;
+    color: var(--gold);
+    text-align: center;
+    padding: 1rem;
+    font-style: italic;
+  }
+
+  /* Satchel contents in wander HUD */
+  .satchel-contents {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    justify-content: center;
+  }
+  .satchel-contents .satchel-thread {
+    font-family: monospace;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 99px;
+    background: rgba(126, 184, 218, 0.08);
+    border: 1px solid rgba(126, 184, 218, 0.15);
+  }
+  .satchel-thread.rarity-common { color: var(--text-dim); border-color: rgba(110, 110, 142, 0.25); }
+  .satchel-thread.rarity-uncommon { color: var(--green); border-color: rgba(92, 184, 92, 0.25); }
+  .satchel-thread.rarity-rare { color: var(--accent); border-color: rgba(126, 184, 218, 0.25); }
+
+  /* Return to loom button */
+  .return-loom-btn {
+    display: inline-block;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.85rem;
+    padding: 0.5rem 1.2rem;
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    background: linear-gradient(135deg, #1a2a3a, #12121a);
+    color: var(--gold);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    margin-top: 0.6rem;
+  }
+  .return-loom-btn:hover {
+    background: linear-gradient(135deg, #2a3a4a, #1a1a2a);
+    color: #e8c87e;
+    border-color: #e8c87e;
+  }
+
   @media (max-width: 500px) {
     .codex-entries { grid-template-columns: 1fr; }
     .codex-panel { padding: 1rem; }
@@ -700,6 +863,8 @@
 
 <div class="wander-hud" id="wanderHud">
   <span class="satchel-counter">Satchel <span class="satchel-count" id="satchelCount">0 / 6</span></span>
+  <div class="satchel-contents" id="satchelContents"></div>
+  <button class="return-loom-btn" id="returnLoomBtn">Return to Loom</button>
 </div>
 
 <div class="controls" id="weaveControls">
@@ -712,6 +877,10 @@
 <button class="codex-btn" id="codexBtn">Codex <span class="codex-btn-count" id="codexBtnCount"></span></button>
 <div class="codex-overlay" id="codexOverlay">
   <div class="codex-panel" id="codexPanel"></div>
+</div>
+
+<div class="thread-draft-overlay" id="threadDraftOverlay">
+  <div class="thread-draft-panel" id="threadDraftPanel"></div>
 </div>
 
 <div class="results-panel" id="resultsPanel" style="display: none;">
@@ -1325,6 +1494,11 @@ let wanderSatchel = [];    // collected threads
 let wanderVisited = new Set(); // set of visited node indices
 let wanderRejectFlash = null;  // { nodeIndex, until }
 let wanderRejectRAF = null;
+let wanderOfferedPool = new Set(); // thread names already shown this wander
+let wanderPityCounter = 0;         // consecutive no-rare visits
+let wanderDraftOpen = false;       // is the draft overlay currently open
+
+const WANDER_SATCHEL_MAX = 6;
 
 const WANDER_NODE_TYPES = ["thread-cluster", "clue-shrine", "hazard", "rest"];
 const WANDER_NODE_COLORS = {
@@ -1676,6 +1850,7 @@ function animateWanderRejectFlash() {
 
 function handleMapClick(clientX, clientY) {
   if (!wanderMap || wanderPosition === null) return;
+  if (wanderDraftOpen) return; // don't allow movement while draft is open
 
   const clickedIndex = hitTestMapNode(clientX, clientY);
   if (clickedIndex < 0) return; // clicked empty space
@@ -1701,7 +1876,13 @@ function handleMapClick(clientX, clientY) {
     return;
   }
 
-  // Update satchel counter (thread collection is Task 15, for now just mark visited)
+  // Thread-cluster node: show draft interface
+  if (wanderMap.nodes[clickedIndex].type === "thread-cluster") {
+    drawNodeMap();
+    showThreadDraft(wanderMap.nodes[clickedIndex]);
+    return;
+  }
+
   updateSatchelDisplay();
   drawNodeMap();
 }
@@ -1709,8 +1890,181 @@ function handleMapClick(clientX, clientY) {
 function updateSatchelDisplay() {
   const countEl = document.getElementById("satchelCount");
   if (countEl) {
-    countEl.textContent = wanderSatchel.length + " / 6";
+    countEl.textContent = wanderSatchel.length + " / " + WANDER_SATCHEL_MAX;
   }
+  // Update satchel contents list
+  const contentsEl = document.getElementById("satchelContents");
+  if (contentsEl) {
+    contentsEl.innerHTML = "";
+    for (const thread of wanderSatchel) {
+      const tag = document.createElement("span");
+      tag.className = "satchel-thread rarity-" + thread.rarity;
+      tag.textContent = thread.name;
+      contentsEl.appendChild(tag);
+    }
+  }
+}
+
+function generateThreadOptions(count) {
+  // Filter out already-offered threads
+  let available = THREADS.filter(t => !wanderOfferedPool.has(t.name));
+
+  // Graceful degradation: if pool is depleted, allow repeats
+  if (available.length < count) {
+    available = [...THREADS];
+  }
+
+  // Pity mechanic: after 3 consecutive no-rare visits, guarantee a rare
+  const needsPity = wanderPityCounter >= 3;
+
+  let options;
+  if (needsPity) {
+    // Guarantee at least one rare thread
+    const rares = available.filter(t => t.rarity === "rare");
+    const nonRares = available.filter(t => t.rarity !== "rare");
+
+    if (rares.length > 0) {
+      // Pick 1 rare, fill rest from non-rares
+      const shuffledRares = [...rares].sort(() => Math.random() - 0.5);
+      const shuffledNonRares = [...nonRares].sort(() => Math.random() - 0.5);
+      options = [shuffledRares[0]];
+      for (let i = 0; i < shuffledNonRares.length && options.length < count; i++) {
+        options.push(shuffledNonRares[i]);
+      }
+      // If still not enough, fill from rares
+      for (let i = 1; i < shuffledRares.length && options.length < count; i++) {
+        options.push(shuffledRares[i]);
+      }
+    } else {
+      // No rares available at all (shouldn't happen, but graceful)
+      const shuffled = [...available].sort(() => Math.random() - 0.5);
+      options = shuffled.slice(0, count);
+    }
+  } else {
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
+    options = shuffled.slice(0, count);
+  }
+
+  // Track offered threads
+  for (const t of options) {
+    wanderOfferedPool.add(t.name);
+  }
+
+  // Update pity counter
+  const hasRare = options.some(t => t.rarity === "rare");
+  if (hasRare) {
+    wanderPityCounter = 0;
+  } else {
+    wanderPityCounter++;
+  }
+
+  return options;
+}
+
+function showThreadDraft(node) {
+  wanderDraftOpen = true;
+  const overlay = document.getElementById("threadDraftOverlay");
+  const panel = document.getElementById("threadDraftPanel");
+  panel.innerHTML = "";
+
+  // Title
+  const title = document.createElement("div");
+  title.className = "thread-draft-title";
+  title.textContent = "Thread Cluster";
+  panel.appendChild(title);
+
+  // Satchel full check
+  if (wanderSatchel.length >= WANDER_SATCHEL_MAX) {
+    const notice = document.createElement("div");
+    notice.className = "satchel-full-notice";
+    notice.textContent = "Your satchel is full.";
+    panel.appendChild(notice);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "thread-draft-skip";
+    closeBtn.textContent = "Continue";
+    closeBtn.addEventListener("click", closeDraft);
+    panel.appendChild(closeBtn);
+
+    overlay.classList.add("open");
+    return;
+  }
+
+  // Subtitle with remaining capacity
+  const remaining = WANDER_SATCHEL_MAX - wanderSatchel.length;
+  const subtitle = document.createElement("div");
+  subtitle.className = "thread-draft-subtitle";
+  subtitle.textContent = "Choose a thread to add to your satchel (" + remaining + " slot" + (remaining !== 1 ? "s" : "") + " remaining)";
+  panel.appendChild(subtitle);
+
+  // Generate 2-3 thread options
+  const optionCount = 2 + Math.floor(Math.random() * 2); // 2 or 3
+  const options = generateThreadOptions(optionCount);
+
+  const cardsContainer = document.createElement("div");
+  cardsContainer.className = "thread-draft-cards";
+
+  for (const thread of options) {
+    const card = document.createElement("div");
+    card.className = "thread-draft-card";
+
+    // Header: name + rarity
+    const header = document.createElement("div");
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "draft-card-name";
+    nameSpan.textContent = thread.name;
+    header.appendChild(nameSpan);
+
+    const raritySpan = document.createElement("span");
+    raritySpan.className = "rarity-badge rarity-" + thread.rarity;
+    raritySpan.textContent = thread.rarity;
+    header.appendChild(raritySpan);
+    card.appendChild(header);
+
+    // Nature traits as badges
+    const traitsDiv = document.createElement("div");
+    traitsDiv.className = "nature-traits";
+    for (const trait of Object.keys(thread.nature)) {
+      if (thread.nature[trait]) {
+        const tag = document.createElement("span");
+        tag.className = "trait-tag";
+        tag.textContent = trait;
+        traitsDiv.appendChild(tag);
+      }
+    }
+    card.appendChild(traitsDiv);
+
+    // Click to collect
+    card.addEventListener("click", () => {
+      collectThread(thread);
+    });
+
+    cardsContainer.appendChild(card);
+  }
+
+  panel.appendChild(cardsContainer);
+
+  // Skip button
+  const skipBtn = document.createElement("button");
+  skipBtn.className = "thread-draft-skip";
+  skipBtn.textContent = "Skip";
+  skipBtn.addEventListener("click", closeDraft);
+  panel.appendChild(skipBtn);
+
+  overlay.classList.add("open");
+}
+
+function collectThread(thread) {
+  if (wanderSatchel.length >= WANDER_SATCHEL_MAX) return;
+  wanderSatchel.push(thread);
+  updateSatchelDisplay();
+  closeDraft();
+}
+
+function closeDraft() {
+  wanderDraftOpen = false;
+  const overlay = document.getElementById("threadDraftOverlay");
+  overlay.classList.remove("open");
 }
 
 function startWander() {
@@ -1721,6 +2075,9 @@ function startWander() {
   wanderPosition = 0; // start node
   wanderSatchel = [];
   wanderVisited = new Set([0]);
+  wanderOfferedPool = new Set();
+  wanderPityCounter = 0;
+  wanderDraftOpen = false;
   wanderMap.nodes[0].visited = true;
 
   // Hide Weave UI
@@ -1752,6 +2109,7 @@ function startWeave(collectedThreads) {
 
   // Hide Wander UI
   document.getElementById("wanderHud").classList.remove("active");
+  closeDraft(); // ensure draft overlay is closed
 
   // Clear wander state
   wanderMap = null;
@@ -3213,6 +3571,18 @@ document.getElementById("wanderBtn").addEventListener("click", () => {
   startWander();
 });
 
+document.getElementById("returnLoomBtn").addEventListener("click", () => {
+  if (wanderSatchel.length === 0) {
+    if (!confirm("No threads collected \u2014 return anyway?")) return;
+  }
+  startWeave(wanderSatchel);
+});
+
+// Close thread draft overlay when clicking outside the panel
+document.getElementById("threadDraftOverlay").addEventListener("click", function(e) {
+  if (e.target === this) closeDraft();
+});
+
 // ============================================================
 // CODEX — persistent discovery tracking via localStorage
 // ============================================================
@@ -3446,7 +3816,9 @@ function initGame(phase) {
 // Escape to cancel drag or close codex
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    if (document.getElementById("codexOverlay").classList.contains("open")) {
+    if (wanderDraftOpen) {
+      closeDraft();
+    } else if (document.getElementById("codexOverlay").classList.contains("open")) {
       toggleCodex();
     } else if (dragState) {
       cancelDrag();
