@@ -61,13 +61,53 @@ export class Loom {
   /**
    * Activate: resolve all crossings outward from center.
    * Each pair crossed only once.
+   * Cascade: when a crossing matches an archetype with cascade traits,
+   * those traits are injected into adjacent unresolved crossings.
    */
   activate() {
     this.crossings = [];
     const resolved = new Set();
+    const cascadePool = new Map(); // posKey -> extra traits from cascade
     const pairKey = (q1, r1, q2, r2) => {
       const a = posKey(q1, r1), b = posKey(q2, r2);
       return a < b ? `${a}|${b}` : `${b}|${a}`;
+    };
+
+    const resolveCrossing = (tA, qa, ra, tB, qb, rb) => {
+      const keyA = posKey(qa, ra);
+      const keyB = posKey(qb, rb);
+      const extraA = cascadePool.get(keyA) || {};
+      const extraB = cascadePool.get(keyB) || {};
+
+      // Merge cascade traits into natures before unifying
+      const natureA = { ...tA.nature, ...extraA };
+      const natureB = { ...tB.nature, ...extraB };
+
+      const result = unify(natureA, natureB);
+      const archetype = matchArchetype(result);
+
+      // If archetype matched with cascade, inject into neighbors of both positions
+      if (archetype.match?.cascade) {
+        const cascade = archetype.match.cascade;
+        for (const [pq, pr] of [[qa, ra], [qb, rb]]) {
+          for (const nb2 of this.getNeighbors(pq, pr)) {
+            const nbKey = posKey(nb2.q, nb2.r);
+            const existing = cascadePool.get(nbKey) || {};
+            cascadePool.set(nbKey, { ...existing, ...cascade });
+          }
+        }
+      }
+
+      return {
+        threadA: { ...tA, position: { q: qa, r: ra } },
+        threadB: { ...tB, position: { q: qb, r: rb } },
+        unification: result,
+        archetype,
+        cascadeApplied: [
+          ...Object.keys(extraA).map(k => ({ trait: k, to: keyA })),
+          ...Object.keys(extraB).map(k => ({ trait: k, to: keyB })),
+        ],
+      };
     };
 
     // Center first
@@ -77,7 +117,7 @@ export class Loom {
         const pk = pairKey(0, 0, nb.q, nb.r);
         if (!resolved.has(pk)) {
           resolved.add(pk);
-          this.crossings.push(this._resolve(center, 0, 0, nb.thread, nb.q, nb.r));
+          this.crossings.push(resolveCrossing(center, 0, 0, nb.thread, nb.q, nb.r));
         }
       }
     }
@@ -91,23 +131,12 @@ export class Loom {
         const pk = pairKey(pos.q, pos.r, nb.q, nb.r);
         if (!resolved.has(pk)) {
           resolved.add(pk);
-          this.crossings.push(this._resolve(thread, pos.q, pos.r, nb.thread, nb.q, nb.r));
+          this.crossings.push(resolveCrossing(thread, pos.q, pos.r, nb.thread, nb.q, nb.r));
         }
       }
     }
 
     return this.crossings;
-  }
-
-  _resolve(tA, qa, ra, tB, qb, rb) {
-    const result = unify(tA.nature, tB.nature);
-    const archetype = matchArchetype(result);
-    return {
-      threadA: { ...tA, position: { q: qa, r: ra } },
-      threadB: { ...tB, position: { q: qb, r: rb } },
-      unification: result,
-      archetype,
-    };
   }
 
   static get POSITIONS() { return HEX_POSITIONS; }

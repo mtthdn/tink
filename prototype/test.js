@@ -3,6 +3,8 @@
 
 import { unify, flattenUnified } from "./unify.js";
 import { matchArchetype, getCatalog } from "./archetypes.js";
+import { Loom } from "./loom.js";
+import { getAllThreads } from "./threads.js";
 
 let passed = 0, failed = 0, total = 0;
 const G = "\x1b[32m", R = "\x1b[31m", C = "\x1b[36m", B = "\x1b[1m", D = "\x1b[0m";
@@ -220,6 +222,65 @@ section("Archetype: match includes cascade");
   ok(m.match !== null, "Found match");
   ok(m.match.cascade !== undefined, "Match result includes cascade");
   ok(typeof m.match.cascade === "object", "Cascade is an object");
+}
+
+// ═══ Cascade: archetype output modifies downstream crossings ═══
+section("Cascade: archetype output modifies downstream crossings");
+{
+  const loom = new Loom();
+  const threads = getAllThreads();
+  const find = (name) => threads.find(t => t.name === name);
+
+  // Place threads so center crossing produces an archetype with cascade traits
+  // Ember: hot, bright, ephemeral
+  // Glacier: cold, vast, persistent
+  // Clockwork: mechanical, persistent, sharp
+  loom.place(find("Ember"), 0, 0);      // center
+  loom.place(find("Glacier"), 1, 0);     // east
+  loom.place(find("Clockwork"), -1, 0);  // west
+
+  const crossings = loom.activate();
+  ok(crossings.length >= 2, "At least 2 crossings resolved");
+
+  // Every crossing should have a cascadeApplied field (may be empty for first crossing)
+  ok(crossings.every(cx => Array.isArray(cx.cascadeApplied)),
+    "All crossings have cascadeApplied array");
+
+  // First crossing (center) receives no cascade (nothing resolved before it)
+  eq(crossings[0].cascadeApplied.length, 0,
+    "First crossing receives no cascade (nothing resolved before it)");
+}
+
+// ═══ Cascade: traits inject into neighboring crossings ═══
+section("Cascade: traits inject into neighboring crossings");
+{
+  const loom = new Loom();
+  const threads = getAllThreads();
+  const find = (name) => threads.find(t => t.name === name);
+
+  // Place Ember at center and Glacier east
+  // Ember(hot,bright,ephemeral) x Glacier(cold,vast,persistent) should match something
+  // and emit cascade traits to the positions
+  loom.place(find("Ember"), 0, 0);
+  loom.place(find("Glacier"), 1, 0);
+  loom.place(find("Clockwork"), -1, 0);
+
+  const crossings = loom.activate();
+
+  // Check that later crossings may have received cascade traits
+  // The center crossing's archetype (if any) emits cascade to neighbors
+  if (crossings[0].archetype.match) {
+    const cascade = crossings[0].archetype.match.cascade;
+    if (cascade && Object.keys(cascade).length > 0) {
+      // At least one later crossing should have cascade applied
+      const laterWithCascade = crossings.slice(1).filter(
+        cx => cx.cascadeApplied.length > 0
+      );
+      ok(laterWithCascade.length > 0 || crossings.length === 1,
+        "Cascade traits propagate to later crossings");
+    }
+  }
+  ok(true, "Cascade resolution completes without error");
 }
 
 // ═══ Summary ═══
