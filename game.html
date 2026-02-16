@@ -945,6 +945,94 @@
     border-color: #e8c87e;
   }
 
+  /* Cycle indicator */
+  .cycle-indicator {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+  }
+  .cycle-indicator .cycle-current {
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  /* Run summary overlay */
+  .run-summary-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 15, 0.9);
+    z-index: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  .run-summary-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .run-summary-panel {
+    background: var(--surface);
+    border: 1px solid var(--gold);
+    border-radius: 12px;
+    padding: 2rem 2.5rem;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+  }
+  .run-summary-panel h2 {
+    color: var(--gold);
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+  }
+  .run-summary-stat {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--text);
+    margin: 0.5rem 0;
+  }
+  .run-summary-stat .stat-value {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .run-summary-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.8rem;
+    justify-content: center;
+  }
+
+  /* Results cycle header */
+  .results-cycle-header {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.6rem;
+    text-align: center;
+  }
+  .results-run-progress {
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 0.6rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--border);
+  }
+  .results-actions {
+    display: flex;
+    gap: 0.8rem;
+    justify-content: center;
+    margin-top: 0.8rem;
+  }
+
   @media (max-width: 500px) {
     .codex-entries { grid-template-columns: 1fr; }
     .codex-panel { padding: 1rem; }
@@ -956,6 +1044,7 @@
 <div class="header">
   <h1>tink</h1>
   <div class="subtitle">The Loom</div>
+  <div class="cycle-indicator" id="cycleIndicator" style="display: none;"></div>
   <button class="sound-toggle" id="soundToggle" title="Toggle sound">&#x1f50a;</button>
 </div>
 
@@ -996,6 +1085,10 @@
 <div class="results-panel" id="resultsPanel" style="display: none;">
   <h2 class="results-label">Crossing Results</h2>
   <div id="resultsContent"></div>
+</div>
+
+<div class="run-summary-overlay" id="runSummaryOverlay">
+  <div class="run-summary-panel" id="runSummaryPanel"></div>
 </div>
 
 <div class="paradox-vignette" id="paradoxVignette"></div>
@@ -1789,6 +1882,17 @@ const TRAIT_COLORS = {
 // ============================================================
 
 let gamePhase = "wander"; // "wander" or "weave"
+
+// Run state: tracks progress through 5 Wander-Weave-Activate cycles
+let runState = {
+  cycle: 1,
+  maxCycles: 5,
+  loomTier: "small",
+  producedArchetypes: [],   // archetypes produced this run (all cycles)
+  cycleArchetypes: [],      // archetypes produced this cycle only
+  newDiscoveries: 0,        // new codex discoveries this run
+  active: false,
+};
 let wanderMap = null;      // { nodes: [], edges: [] }
 let wanderPosition = null; // index into wanderMap.nodes
 let wanderSatchel = [];    // collected threads
@@ -2508,6 +2612,106 @@ function closeShrineOverlay() {
   overlay.classList.remove("open");
 }
 
+// ============================================================
+// RUN MANAGEMENT — 5-cycle Wander→Weave→Activate loop
+// ============================================================
+
+function startRun() {
+  runState.cycle = 1;
+  runState.maxCycles = 5;
+  runState.loomTier = computeLoomTier();
+  runState.producedArchetypes = [];
+  runState.cycleArchetypes = [];
+  runState.newDiscoveries = 0;
+  runState.active = true;
+
+  codexData.stats.runs++;
+  Codex.save(codexData);
+
+  updateCycleIndicator();
+  startWander();
+}
+
+function nextCycle() {
+  runState.cycle++;
+  runState.cycleArchetypes = [];
+
+  // Check for loom tier upgrade between cycles
+  runState.loomTier = computeLoomTier();
+
+  updateCycleIndicator();
+  startWander();
+}
+
+function endRun() {
+  runState.active = false;
+  showRunSummary();
+}
+
+function updateCycleIndicator() {
+  const el = document.getElementById("cycleIndicator");
+  if (!runState.active) {
+    el.style.display = "none";
+    return;
+  }
+  el.style.display = "";
+  el.innerHTML = 'Cycle <span class="cycle-current">' + runState.cycle + '</span> / ' + runState.maxCycles;
+}
+
+function showRunSummary() {
+  const overlay = document.getElementById("runSummaryOverlay");
+  const panel = document.getElementById("runSummaryPanel");
+
+  const uniqueArchetypes = [...new Set(runState.producedArchetypes.map(a => a.name))];
+  const discovered = Object.keys(codexData.discovered).length;
+  const completionPct = Math.round((discovered / CATALOG.length) * 100);
+
+  panel.innerHTML = "";
+
+  const heading = document.createElement("h2");
+  heading.textContent = "Run Complete";
+  panel.appendChild(heading);
+
+  const stats = [
+    { label: "Cycles completed", value: runState.cycle },
+    { label: "Archetypes produced", value: runState.producedArchetypes.length },
+    { label: "Unique archetypes", value: uniqueArchetypes.length },
+    { label: "New discoveries", value: runState.newDiscoveries },
+    { label: "Codex completion", value: completionPct + "%" },
+  ];
+
+  for (const s of stats) {
+    const div = document.createElement("div");
+    div.className = "run-summary-stat";
+    div.innerHTML = s.label + ': <span class="stat-value">' + s.value + '</span>';
+    panel.appendChild(div);
+  }
+
+  // List unique archetypes produced
+  if (uniqueArchetypes.length > 0) {
+    const listDiv = document.createElement("div");
+    listDiv.style.cssText = "margin-top: 0.8rem; font-size: 0.8rem; color: #6e6e8e; font-style: italic;";
+    listDiv.textContent = uniqueArchetypes.join(", ");
+    panel.appendChild(listDiv);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "run-summary-actions";
+
+  const newRunBtn = document.createElement("button");
+  newRunBtn.className = "btn btn-primary";
+  newRunBtn.textContent = "New Run";
+  newRunBtn.addEventListener("click", () => {
+    overlay.classList.remove("open");
+    startRun();
+  });
+  actions.appendChild(newRunBtn);
+
+  panel.appendChild(actions);
+
+  overlay.classList.add("open");
+}
+
 function startWander() {
   gamePhase = "wander";
 
@@ -2529,10 +2733,12 @@ function startWander() {
   document.getElementById("threadTray").style.display = "none";
   document.getElementById("weaveControls").style.display = "none";
   document.getElementById("resultsPanel").style.display = "none";
+  document.getElementById("runSummaryOverlay").classList.remove("open");
 
   // Show Wander UI
   document.getElementById("wanderHud").classList.add("active");
   updateSatchelDisplay();
+  updateCycleIndicator();
 
   drawNodeMap();
 }
@@ -2551,14 +2757,14 @@ function startWeave(collectedThreads) {
   // Hide Wander UI
   document.getElementById("wanderHud").classList.remove("active");
   closeDraft(); // ensure draft overlay is closed
+  updateCycleIndicator();
 
   // Clear wander state
   wanderMap = null;
   wanderPosition = null;
 
-  // Initialize the loom — track session, reset state
-  codexData.stats.runs++;
-  Codex.save(codexData);
+  // Initialize the loom — reset animation state
+  runState.cycleArchetypes = [];
 
   loomLocked = false;
   if (activationAnimRAF) {
@@ -2584,6 +2790,7 @@ function startWeave(collectedThreads) {
   const resultsPanel = document.getElementById("resultsPanel");
   activateBtn.classList.remove("btn-locked");
   resetBtn.classList.remove("btn-locked");
+  resetBtn.style.display = "";
   trayEl.classList.remove("tray-dimmed");
   if (trayLabel) trayLabel.style.opacity = "";
   canvas.classList.remove("shake");
@@ -3380,6 +3587,13 @@ async function runActivationAnimation(crossings) {
       const isNewDiscovery = Codex.discover(codexData, cx.archetype.match, { requiredTraits });
       updateCodexBtnCount();
 
+      // Track in run state
+      if (runState.active) {
+        runState.producedArchetypes.push({ name: cx.archetype.match.name, tier: cx.archetype.match.tier });
+        runState.cycleArchetypes.push({ name: cx.archetype.match.name, tier: cx.archetype.match.tier });
+        if (isNewDiscovery) runState.newDiscoveries++;
+      }
+
       // --- Audio: archetype match ---
       GameAudio.archetypeMatch();
 
@@ -3578,9 +3792,14 @@ async function runActivationAnimation(crossings) {
   renderResults(crossings);
   resultsPanel.classList.add("fade-in");
 
-  // Re-enable Reset button
-  resetBtn.classList.remove("btn-locked");
-  hintEl.textContent = "Crossing complete. Reset to weave again.";
+  // Re-enable action button (hide reset during run — use results panel buttons instead)
+  if (runState.active) {
+    resetBtn.style.display = "none";
+    hintEl.textContent = "Crossing complete. See results below.";
+  } else {
+    resetBtn.classList.remove("btn-locked");
+    hintEl.textContent = "Crossing complete. Reset to weave again.";
+  }
 
   // Check if codex discoveries warrant a loom expansion
   const nextTier = computeLoomTier();
@@ -3783,8 +4002,17 @@ function renderResults(crossings) {
   const content = document.getElementById("resultsContent");
   content.innerHTML = "";
 
+  // Cycle header (if run is active)
+  if (runState.active) {
+    const cycleHeader = document.createElement("div");
+    cycleHeader.className = "results-cycle-header";
+    cycleHeader.textContent = "Cycle " + runState.cycle + " of " + runState.maxCycles;
+    content.appendChild(cycleHeader);
+  }
+
   if (crossings.length === 0) {
-    content.innerHTML = '<div class="no-match">No crossings to resolve.</div>';
+    content.innerHTML += '<div class="no-match">No crossings to resolve.</div>';
+    appendResultsActions(content);
     panel.style.display = "block";
     return;
   }
@@ -3897,7 +4125,54 @@ function renderResults(crossings) {
   codexDiv.textContent = "Codex: " + discovered + " / " + CATALOG.length + " discovered";
   content.appendChild(codexDiv);
 
+  // Run progress and cycle actions
+  appendResultsActions(content);
+
   panel.style.display = "block";
+}
+
+function appendResultsActions(container) {
+  if (!runState.active) return;
+
+  // Cumulative run progress
+  const progressDiv = document.createElement("div");
+  progressDiv.className = "results-run-progress";
+  const uniqueNames = [...new Set(runState.producedArchetypes.map(a => a.name))];
+  progressDiv.textContent = "Run progress: " + runState.producedArchetypes.length + " archetypes produced" +
+    (uniqueNames.length > 0 ? " (" + uniqueNames.length + " unique)" : "");
+  container.appendChild(progressDiv);
+
+  // Action buttons
+  const actions = document.createElement("div");
+  actions.className = "results-actions";
+
+  if (runState.cycle < runState.maxCycles) {
+    const nextBtn = document.createElement("button");
+    nextBtn.className = "btn btn-primary";
+    nextBtn.textContent = "Next Cycle";
+    nextBtn.addEventListener("click", () => {
+      nextCycle();
+    });
+    actions.appendChild(nextBtn);
+
+    const endEarlyBtn = document.createElement("button");
+    endEarlyBtn.className = "btn";
+    endEarlyBtn.textContent = "End Run";
+    endEarlyBtn.addEventListener("click", () => {
+      endRun();
+    });
+    actions.appendChild(endEarlyBtn);
+  } else {
+    const endBtn = document.createElement("button");
+    endBtn.className = "btn btn-primary";
+    endBtn.textContent = "End Run";
+    endBtn.addEventListener("click", () => {
+      endRun();
+    });
+    actions.appendChild(endBtn);
+  }
+
+  container.appendChild(actions);
 }
 
 // ============================================================
@@ -4086,7 +4361,12 @@ canvas.addEventListener("mouseleave", () => {
 // ============================================================
 
 document.getElementById("resetBtn").addEventListener("click", () => {
-  initGame();
+  if (runState.active) {
+    // During a run, reset just the loom (re-enter weave with random threads)
+    startWeave([]);
+  } else {
+    initGame();
+  }
 });
 
 document.getElementById("wanderBtn").addEventListener("click", () => {
@@ -4357,7 +4637,7 @@ function initGame(phase) {
   phase = phase || "wander";
 
   if (phase === "wander") {
-    startWander();
+    startRun();
     return;
   }
 
