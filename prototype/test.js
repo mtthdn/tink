@@ -5,6 +5,7 @@ import { unify, flattenUnified } from "./unify.js";
 import { matchArchetype, getCatalog } from "./archetypes.js";
 import { Loom, LOOM_TIERS } from "./loom.js";
 import { getAllThreads } from "./threads.js";
+import { beatMatches, beatPartialScore, evaluateEpic, evaluateAllEpics, TEST_EPICS } from "./epics.js";
 
 let passed = 0, failed = 0, total = 0;
 const G = "\x1b[32m", R = "\x1b[31m", C = "\x1b[36m", B = "\x1b[1m", D = "\x1b[0m";
@@ -374,6 +375,161 @@ section("Loom tiers: tier affects crossings");
   const expandedCrossings = medium.activate();
   ok(expandedCrossings.length > mediumCrossings.length,
     "More threads on medium loom produces more crossings");
+}
+
+// ═══ Beat matching ═══
+section("Beat matching");
+{
+  const beat = { label: "Test", requires: { stability: "tension" } };
+  const cxMatch = { stability: "tension", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 };
+  const cxMiss = { stability: "harmony", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 };
+  ok(beatMatches(beat, cxMatch), "Exact stability match");
+  ok(!beatMatches(beat, cxMiss), "Stability mismatch returns false");
+}
+{
+  const beat = { label: "Test", requires: { traits: { bright: true, hot: true } } };
+  const cxAll = { stability: "harmony", traits: { bright: true, hot: true, cold: true }, archetype: null, nearMisses: [], cascadeDepth: 0 };
+  const cxPartial = { stability: "harmony", traits: { bright: true, cold: true }, archetype: null, nearMisses: [], cascadeDepth: 0 };
+  ok(beatMatches(beat, cxAll), "Trait requirements all satisfied");
+  ok(!beatMatches(beat, cxPartial), "Trait requirements partially fail");
+}
+{
+  const beat = { label: "Test", requires: { hasArchetype: true } };
+  const cxWith = { stability: "harmony", traits: {}, archetype: { name: "Aurora", tier: "uncommon" }, nearMisses: [], cascadeDepth: 0 };
+  const cxWithout = { stability: "harmony", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 };
+  ok(beatMatches(beat, cxWith), "hasArchetype true with archetype present");
+  ok(!beatMatches(beat, cxWithout), "hasArchetype true with no archetype");
+}
+{
+  const beat = { label: "Test", requires: { cascadeDepth: 2 } };
+  const cxMet = { stability: "harmony", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 3 };
+  const cxNot = { stability: "harmony", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 1 };
+  ok(beatMatches(beat, cxMet), "cascadeDepth requirement met");
+  ok(!beatMatches(beat, cxNot), "cascadeDepth requirement not met");
+}
+{
+  const beat = { label: "Test", requires: { stability: "tension", hasArchetype: true, cascadeDepth: 1 } };
+  const cx = { stability: "tension", traits: {}, archetype: { name: "Aurora", tier: "uncommon" }, nearMisses: [], cascadeDepth: 2 };
+  ok(beatMatches(beat, cx), "Multiple requirements all satisfied");
+}
+{
+  const beat = { label: "Test", requires: {} };
+  const cx = { stability: "paradox", traits: { bright: true }, archetype: null, nearMisses: [], cascadeDepth: 0 };
+  ok(beatMatches(beat, cx), "Empty requirements = always matches");
+}
+
+// ═══ Beat partial score ═══
+section("Beat partial score");
+{
+  const beat = { label: "Test", requires: { stability: "tension", hasArchetype: true } };
+  const cxFull = { stability: "tension", traits: {}, archetype: { name: "Aurora", tier: "uncommon" }, nearMisses: [], cascadeDepth: 0 };
+  eq(beatPartialScore(beat, cxFull), 1.0, "Full match = 1.0");
+}
+{
+  const beat = { label: "Test", requires: { stability: "paradox", hasArchetype: true } };
+  const cxNone = { stability: "harmony", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 };
+  eq(beatPartialScore(beat, cxNone), 0.0, "No match = 0.0");
+}
+{
+  const beat = { label: "Test", requires: { stability: "tension", hasArchetype: true } };
+  const cxHalf = { stability: "tension", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 };
+  eq(beatPartialScore(beat, cxHalf), 0.5, "Half match = 0.5");
+}
+{
+  const beat = { label: "Test", requires: {} };
+  const cx = { stability: "harmony", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 };
+  eq(beatPartialScore(beat, cx), 1.0, "Empty requirements = 1.0");
+}
+
+// ═══ Epic evaluation ═══
+section("Epic evaluation");
+{
+  // Build a history that matches Test Spark's two beats in order
+  const history = [
+    { stability: "tension", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 },
+    { stability: "harmony", traits: {}, archetype: { name: "Aurora", tier: "uncommon" }, nearMisses: [], cascadeDepth: 0 },
+  ];
+  const result = evaluateEpic(TEST_EPICS[0], history);
+  eq(result.completedBeats, 2, "All beats match in order");
+  ok(result.complete, "Complete flag true when all match");
+}
+{
+  // Only first beat matches
+  const history = [
+    { stability: "tension", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 },
+    { stability: "resonance", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 },
+  ];
+  const result = evaluateEpic(TEST_EPICS[0], history);
+  eq(result.completedBeats, 1, "Partial when some beats match");
+  ok(!result.complete, "Not complete when partial");
+}
+{
+  // Test Echo: 3 beats, 2 match = 0.67 = near-miss
+  const history = [
+    { stability: "resonance", traits: { bright: true, hot: true }, archetype: null, nearMisses: [], cascadeDepth: 0 },
+    { stability: "harmony", traits: { bright: true, hot: true }, archetype: null, nearMisses: [], cascadeDepth: 0 },
+    { stability: "harmony", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 },
+  ];
+  const result = evaluateEpic(TEST_EPICS[1], history);
+  // Beat 1 (resonance) matches history[0], Beat 2 (traits bright+hot) matches history[1], Beat 3 (cascadeDepth 1) doesn't match
+  eq(result.completedBeats, 2, "Two of three beats matched");
+  ok(result.nearMiss, "Near-miss at 67%+ completion");
+}
+{
+  // Beats must match in ORDER: beat 2 can only match after beat 1's match
+  // History has archetype first, tension second — but beat 1 needs tension, beat 2 needs archetype
+  const history = [
+    { stability: "harmony", traits: {}, archetype: { name: "Aurora", tier: "uncommon" }, nearMisses: [], cascadeDepth: 0 },
+    { stability: "tension", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 },
+  ];
+  const result = evaluateEpic(TEST_EPICS[0], history);
+  // Beat 1 (stability: tension) matches history[1] (index 1)
+  // Beat 2 (hasArchetype: true) needs to match AFTER index 1 — nothing left
+  eq(result.completedBeats, 1, "Beats must match in order (beat 2 after beat 1)");
+}
+{
+  const result = evaluateEpic(TEST_EPICS[0], []);
+  eq(result.completedBeats, 0, "Empty history = no matches");
+  eq(result.ratio, 0, "Empty history ratio = 0");
+}
+{
+  const history = [
+    { stability: "tension", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 },
+    { stability: "harmony", traits: {}, archetype: { name: "Aurora", tier: "uncommon" }, nearMisses: [], cascadeDepth: 0 },
+  ];
+  const r1 = evaluateEpic(TEST_EPICS[0], history);
+  const r2 = evaluateEpic(TEST_EPICS[0], history);
+  ok(r1.completedBeats === r2.completedBeats && r1.ratio === r2.ratio && r1.complete === r2.complete,
+    "Same input produces same output (idempotency)");
+}
+
+// ═══ Evaluate all epics ═══
+section("Evaluate all epics");
+{
+  // History that fully matches Test Spark but not Test Echo or Test Paradox Walk
+  const history = [
+    { stability: "tension", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 0 },
+    { stability: "harmony", traits: {}, archetype: { name: "Aurora", tier: "uncommon" }, nearMisses: [], cascadeDepth: 0 },
+  ];
+  const results = evaluateAllEpics(TEST_EPICS, history);
+  ok(results.length === 3, "All three test epics evaluated");
+  // Results should be sorted by ratio descending
+  ok(results[0].ratio >= results[1].ratio && results[1].ratio >= results[2].ratio,
+    "Returns sorted by ratio descending");
+  // Test Spark should be first (complete = ratio 1.0)
+  eq(results[0].epic.name, "Test Spark", "Fully matched epic first");
+}
+{
+  // Verify each epic is evaluated independently — different histories for different epics
+  const history = [
+    { stability: "resonance", traits: { bright: true, hot: true }, archetype: null, nearMisses: [], cascadeDepth: 0 },
+    { stability: "harmony", traits: { bright: true, hot: true }, archetype: null, nearMisses: [], cascadeDepth: 0 },
+    { stability: "harmony", traits: {}, archetype: null, nearMisses: [], cascadeDepth: 1 },
+  ];
+  const results = evaluateAllEpics(TEST_EPICS, history);
+  // Test Echo should match all 3 beats (resonance, traits bright+hot, cascadeDepth 1)
+  const echoResult = results.find(r => r.epic.name === "Test Echo");
+  eq(echoResult.completedBeats, 3, "Multiple epics evaluated independently");
 }
 
 // ═══ Summary ═══

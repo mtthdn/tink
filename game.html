@@ -1712,6 +1712,98 @@ class Loom {
 }
 
 // ============================================================
+// ENGINE: epics.js
+// ============================================================
+
+function beatMatches(beat, crossing) {
+  const req = beat.requires;
+  if (!req) return true;
+  if (req.stability && crossing.stability !== req.stability) return false;
+  if (req.traits) {
+    for (const [k, v] of Object.entries(req.traits)) {
+      if (crossing.traits[k] !== v) return false;
+    }
+  }
+  if (req.hasArchetype && !crossing.archetype) return false;
+  if (req.archetypeTier) {
+    if (!crossing.archetype || crossing.archetype.tier !== req.archetypeTier) return false;
+  }
+  if (req.cascadeDepth && (crossing.cascadeDepth || 0) < req.cascadeDepth) return false;
+  if (req.hasNearMiss && (!crossing.nearMisses || crossing.nearMisses.length === 0)) return false;
+  if (req.minConflicts) {
+    const conflicts = Object.values(crossing.traits).filter(v => v === "conflicted").length;
+    if (conflicts < req.minConflicts) return false;
+  }
+  if (req.heroStage && crossing.heroStage !== req.heroStage) return false;
+  if (req.dramaticArc && crossing.dramaticArc !== req.dramaticArc) return false;
+  if (req.symmetry && crossing.symmetry !== req.symmetry) return false;
+  return true;
+}
+
+function beatPartialScore(beat, crossing) {
+  const req = beat.requires;
+  if (!req) return 1;
+  let total = 0, matched = 0;
+  if (req.stability) { total++; if (crossing.stability === req.stability) matched++; }
+  if (req.traits) {
+    for (const [k, v] of Object.entries(req.traits)) {
+      total++;
+      if (crossing.traits[k] === v) matched++;
+    }
+  }
+  if (req.hasArchetype) { total++; if (crossing.archetype) matched++; }
+  if (req.archetypeTier) { total++; if (crossing.archetype && crossing.archetype.tier === req.archetypeTier) matched++; }
+  if (req.cascadeDepth) { total++; if ((crossing.cascadeDepth || 0) >= req.cascadeDepth) matched++; }
+  if (req.hasNearMiss) { total++; if (crossing.nearMisses && crossing.nearMisses.length > 0) matched++; }
+  if (req.minConflicts) {
+    total++;
+    const conflicts = Object.values(crossing.traits).filter(v => v === "conflicted").length;
+    if (conflicts >= req.minConflicts) matched++;
+  }
+  if (req.heroStage) { total++; if (crossing.heroStage === req.heroStage) matched++; }
+  if (req.dramaticArc) { total++; if (crossing.dramaticArc === req.dramaticArc) matched++; }
+  if (req.symmetry) { total++; if (crossing.symmetry === req.symmetry) matched++; }
+  return total === 0 ? 1 : matched / total;
+}
+
+function evaluateEpic(epic, history) {
+  const matched = [];
+  let historyIdx = 0;
+  for (const beat of epic.beats) {
+    let found = false;
+    for (let i = historyIdx; i < history.length; i++) {
+      if (beatMatches(beat, history[i])) {
+        matched.push({ beat, crossing: history[i], index: i });
+        historyIdx = i + 1;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      let bestPartial = 0;
+      for (let i = historyIdx; i < history.length; i++) {
+        bestPartial = Math.max(bestPartial, beatPartialScore(beat, history[i]));
+      }
+      matched.push({ beat, crossing: null, partial: bestPartial });
+    }
+  }
+  const completedBeats = matched.filter(m => m.crossing !== null).length;
+  const totalBeats = epic.beats.length;
+  const ratio = totalBeats === 0 ? 0 : completedBeats / totalBeats;
+  return {
+    epic, matched, completedBeats, totalBeats, ratio,
+    complete: ratio === 1,
+    nearMiss: ratio >= 2 / 3 && ratio < 1,
+  };
+}
+
+function evaluateAllEpics(epics, history) {
+  return epics
+    .map(e => evaluateEpic(e, history))
+    .sort((a, b) => b.ratio - a.ratio);
+}
+
+// ============================================================
 // AUDIO — Web Audio API sound design
 // ============================================================
 
@@ -1891,6 +1983,7 @@ let runState = {
   producedArchetypes: [],   // archetypes produced this run (all cycles)
   cycleArchetypes: [],      // archetypes produced this cycle only
   newDiscoveries: 0,        // new codex discoveries this run
+  weavingHistory: [],       // crossing results for epic evaluation
   active: false,
 };
 let wanderMap = null;      // { nodes: [], edges: [] }
@@ -2623,6 +2716,7 @@ function startRun() {
   runState.producedArchetypes = [];
   runState.cycleArchetypes = [];
   runState.newDiscoveries = 0;
+  runState.weavingHistory = [];
   runState.active = true;
 
   codexData.stats.runs++;
@@ -3764,6 +3858,19 @@ async function runActivationAnimation(crossings) {
         });
         animOverlay.nearMissLabel = null;
       }
+    }
+
+    // Record crossing result in weaving history for epic evaluation
+    if (runState.active) {
+      runState.weavingHistory.push({
+        cycle: runState.cycle,
+        stability: cx.unification.stability,
+        traits: { ...cx.unification.unified },
+        archetype: cx.archetype.match ? { name: cx.archetype.match.name, tier: cx.archetype.match.tier } : null,
+        nearMisses: cx.archetype.nearMisses || [],
+        cascadeApplied: cx.cascadeApplied || [],
+        cascadeDepth: (cx.cascadeApplied || []).length,
+      });
     }
 
     // Clear overlay labels for next crossing
