@@ -177,15 +177,18 @@ git commit -m "Add epic evaluation engine with weaving history tracking"
 
 ---
 
-### Task B: Author 12 epics + 4 projections
+### Task B: Author 12 epics + 4 projections + axis alignment
 
-Write the full epic content and projection transform functions.
+Write the full epic content, projection transforms, mood declarations, and axis alignment scoring.
 
 **Files:**
-- Modify: `prototype/epics.js` (add all epics and projections)
+- Modify: `prototype/epics.js` (add all epics, projections, alignment scoring)
+- Modify: `prototype/test.js` (add projection + alignment tests)
 - Modify: `game.html` (inline updated epics.js)
 
-**Step 1: Author 12 epics across 3 projections**
+**Step 1: Author 12 epics across 3 projections, each beat with optional mood**
+
+Each beat gets an optional `mood` object: `{ tone, hue, intensity }`. The mood declares what the crossing SHOULD feel like. The stability-to-tone mapping is: harmony="warm", resonance="crystalline", tension="dissonant", paradox="dark".
 
 Tapestry (default, 6 epics):
 1. The Forge of Contradiction (mythic) — tension → cascade → paradox+archetype
@@ -205,9 +208,12 @@ Tragedy (3 epics, requires dramaticArc field):
 11. The Severed Chord (rare) — 3× resonance → no paradox entire run → final=harmony
 12. Inheritance (mythic) — same archetype produced in 2+ different cycles
 
-**Step 2: Implement 4 projection transforms**
+**Step 2: Implement 4 projection transforms with palettes**
 
 ```javascript
+const STABILITY_TONE = { harmony: "warm", resonance: "crystalline", tension: "dissonant", paradox: "dark" };
+const STABILITY_HUE = { harmony: "#44aa88", resonance: "#4488ff", tension: "#ff6600", paradox: "#aa00ff" };
+
 const PROJECTIONS = [
   {
     name: "The Tapestry",
@@ -215,14 +221,16 @@ const PROJECTIONS = [
     description: "The weave as it is — threads, crossings, and what emerges.",
     unlocked: true,
     unlocksAt: 0,
-    transform: (history) => history, // identity
+    palette: { baseHue: "#888888", defaultIntensity: 0.5 },
+    transform: (history) => history,
   },
   {
     name: "Heroic Journey",
     id: "heroic",
     description: "See your weaving as a hero's journey.",
     unlocked: false,
-    unlocksAt: 5, // codex discoveries
+    unlocksAt: 5,
+    palette: { baseHue: "#cc8800", defaultIntensity: 0.6 },
     transform: (history) => history.map((cx, i, all) => ({
       ...cx,
       heroStage: i < all.length * 0.25 ? "call"
@@ -237,8 +245,8 @@ const PROJECTIONS = [
     description: "The arc bends toward sorrow — or transcendence.",
     unlocked: false,
     unlocksAt: 10,
+    palette: { baseHue: "#660033", defaultIntensity: 0.4 },
     transform: (history) => {
-      // Track escalation: each crossing is rising/falling/climax based on stability severity
       const severityMap = { harmony: 0, resonance: 1, tension: 2, paradox: 3 };
       let peak = 0;
       return history.map((cx, i) => {
@@ -254,8 +262,8 @@ const PROJECTIONS = [
     description: "Patterns repeat. The loom remembers.",
     unlocked: false,
     unlocksAt: 15,
+    palette: { baseHue: "#336699", defaultIntensity: 0.5 },
     transform: (history) => {
-      // Detect repeated trait patterns
       const seen = {};
       return history.map(cx => {
         const key = Object.keys(cx.traits).sort().join(",");
@@ -268,36 +276,75 @@ const PROJECTIONS = [
 ];
 ```
 
-**Step 3: Wire projection evaluation**
+**Step 3: Add axis alignment scoring**
 
 ```javascript
+// Pure function: how many sensory axes align for a matched beat?
+function scoreAxisAlignment(beat, crossing) {
+  if (!beat.mood) return { aligned: 0, total: 0, ratio: 0, golden: false };
+  const mood = beat.mood;
+  let total = 0, aligned = 0;
+
+  if (mood.tone) {
+    total++;
+    if (STABILITY_TONE[crossing.stability] === mood.tone) aligned++;
+  }
+  if (mood.hue) {
+    total++;
+    if (STABILITY_HUE[crossing.stability] === mood.hue) aligned++;
+  }
+  if (mood.intensity !== undefined) {
+    total++;
+    // Map stability to natural intensity: harmony=0.2, resonance=0.4, tension=0.6, paradox=0.9
+    const natIntensity = { harmony: 0.2, resonance: 0.4, tension: 0.6, paradox: 0.9 };
+    if (Math.abs((natIntensity[crossing.stability] || 0.5) - mood.intensity) < 0.25) aligned++;
+  }
+
+  const ratio = total === 0 ? 0 : aligned / total;
+  return { aligned, total, ratio, golden: ratio > 0.8 };
+}
+
+// Enhanced evaluateRun with alignment tracking
 function evaluateRun(history, projections, allEpics) {
   const results = [];
+  let goldenMoments = 0;
   for (const proj of projections) {
     if (!proj.unlocked) continue;
     const transformed = proj.transform(history);
     const projEpics = allEpics.filter(e => e.projection === proj.id);
     const evaluated = evaluateAllEpics(projEpics, transformed);
-    results.push(...evaluated.map(r => ({ ...r, projection: proj })));
+    for (const r of evaluated) {
+      const alignments = r.matched
+        .filter(m => m.crossing)
+        .map(m => scoreAxisAlignment(m.beat, m.crossing));
+      const goldenCount = alignments.filter(a => a.golden).length;
+      goldenMoments += goldenCount;
+      results.push({ ...r, projection: proj, alignments, goldenCount });
+    }
   }
-  return results.sort((a, b) => b.ratio - a.ratio);
+  return { results: results.sort((a, b) => b.ratio - a.ratio), goldenMoments };
 }
 ```
 
-**Step 4: Add tests for projections and full epic set**
+**Step 4: Add tests for projections, full epic set, and alignment scoring**
+
+- Projection transforms add correct derived fields
+- Each epic matches against crafted history sequences
+- scoreAxisAlignment returns correct aligned/total/ratio/golden
+- evaluateRun aggregates goldenMoments correctly
 
 **Step 5: Commit**
 
 ```bash
 git add prototype/epics.js prototype/test.js game.html
-git commit -m "Author 12 epics across 4 projections with transform functions"
+git commit -m "Author 12 epics across 4 projections with axis alignment scoring"
 ```
 
 ---
 
 ### Task C: End-of-run epic reveal UI
 
-Show the epic evaluation results at the end of a run.
+Show the epic evaluation results and axis alignment at the end of a run.
 
 **Files:**
 - Modify: `game.html`
@@ -307,11 +354,12 @@ Show the epic evaluation results at the end of a run.
 After the final cycle's results, show a full-screen reveal sequence:
 
 1. **"The tapestry speaks..."** — brief pause with ambient glow
-2. **Completed epics** — one by one, name + tier + completion text, with ceremony (similar to archetype discovery)
-3. **Partial epics** — progress bars showing X/Y beats matched, partial text
-4. **Hidden count** — "X more epics remained hidden in the tapestry"
-5. **Projection teaser** — if player is close to unlocking a new projection, hint at it
-6. **"New Run" button**
+2. **Golden moments count** — "The threads aligned X times" (if goldenMoments > 0)
+3. **Completed epics** — one by one, name + tier + completion text, with ceremony (similar to archetype discovery). Golden beats get a shimmer indicator.
+4. **Partial epics** — progress bars showing X/Y beats matched, partial text
+5. **Hidden count** — "X more epics remained hidden in the tapestry"
+6. **Projection teaser** — if player is close to unlocking a new projection, hint at it
+7. **"New Run" button**
 
 **Step 2: CSS for epic reveal**
 
@@ -319,6 +367,7 @@ After the final cycle's results, show a full-screen reveal sequence:
 - `.epic-reveal-entry` — card for each epic result
 - `.epic-progress-bar` — progress indicator for partial epics
 - `.epic-tier-badge` — colored by epic tier
+- `.golden-indicator` — shimmer for aligned beats
 - Tier colors match archetype tier colors
 
 **Step 3: Wire into game loop**
@@ -326,54 +375,64 @@ After the final cycle's results, show a full-screen reveal sequence:
 In `endRun()`:
 1. Compute `evaluateRun(runState.weavingHistory, PROJECTIONS, EPICS)`
 2. Update projection unlock state based on codex discoveries
-3. Show epic reveal overlay
+3. Show epic reveal overlay with golden moment count
 4. Record completed epics in codex (new section: `codexData.epics`)
 
 **Step 4: Commit**
 
 ```bash
 git add game.html
-git commit -m "Add end-of-run epic reveal with projection evaluation"
+git commit -m "Add end-of-run epic reveal with axis alignment scoring"
 ```
 
 ---
 
-### Task D: Mid-run epic ambiance + projection unlocks
+### Task D: Mid-run epic ambiance + golden path moments + projection unlocks
 
-Add subtle ambient signals during gameplay that hint at epic progress.
+Add multi-sensory ambient signals during gameplay that respond to epic progress and axis alignment.
 
 **Files:**
 - Modify: `game.html`
 
-**Step 1: After each activation, evaluate active epics**
+**Step 1: After each activation, evaluate active epics and detect alignment**
 
 After each activation animation completes, run `evaluateRun` on the history so far. For any epic with a beat that just matched:
 - Brief ambient text flash: the beat's `onMatch` text, styled in the epic's tier color, fading in/out over 1.5s
+- If the beat has a mood, apply a brief color wash (beat.mood.hue) to the canvas, fading over 1s
 - This is subtle — not a ceremony, just atmosphere
 
 For near-misses (beat almost matched):
 - Even subtler: the beat's `onPartial` text in dimmed color, 0.5s
 
-**Step 2: Projection unlock ceremony**
+**Step 2: Golden path moments**
+
+When `scoreAxisAlignment` returns `golden: true` for a just-matched beat:
+- First golden moment in run: subtle canvas shimmer + brief whisper "the threads align"
+- Second: canvas border glow (1px gold outline, 2s fade), tonal accent via GameAudio
+- Third+: escalating emphasis — brighter glow, longer duration, harmonic chord
+- Track golden moments in `runState.goldenMoments` counter
+
+**Step 3: Projection unlock ceremony**
 
 When the player's codex discoveries cross a projection unlock threshold (5, 10, 15):
 - Show a brief overlay: "A new way of seeing awakens..."
-- Projection name + description fade in
+- Projection name + description fade in, tinted with projection's palette.baseHue
 - All existing history is re-evaluated through the new projection
 - Any retroactively matched epic beats get a quick "the tapestry shifts..." message
 
-**Step 3: Codex integration**
+**Step 4: Codex integration**
 
 Add an "Epics" tab to the codex panel:
 - Completed epics: name, tier, completion text, which projection
 - Partial epics from last run: progress bar, matched beats
+- Golden beats marked with shimmer icon
 - Locked projections: "??? — Discover X more archetypes"
 
-**Step 4: Commit**
+**Step 5: Commit**
 
 ```bash
 git add game.html
-git commit -m "Add mid-run epic ambiance and projection unlock ceremony"
+git commit -m "Add mid-run golden path moments and projection unlock ceremony"
 ```
 
 ---

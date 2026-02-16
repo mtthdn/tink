@@ -145,6 +145,100 @@ Beat requires `cascadeDepth: { min: 3 }` but crossing had `cascadeDepth: 2`. The
 
 **The epic author controls this** by choosing what goes in `requires` vs what's optional.
 
+## The Supple Fabric: Multi-Sensory Axis Unification
+
+The game already responds to stability across multiple axes simultaneously:
+- **Music:** GameAudio plays pentatonic (harmony), crystalline (resonance), dissonant (tension), or dark (paradox) tones
+- **Visuals:** Screen shake (1/3/8 intensity), saturation ramp, bright flash per cascade depth
+- **Narrative:** Epic beat text — `onMatch` and `onPartial` messages
+- **Traits:** The unification result itself — which traits emerged, conflicted, or were absent
+
+These axes are already mechanically coupled to stability. The "supple fabric" makes this coupling **explicit and discoverable** — each beat declares not just constraint requirements but a sensory **mood**, and when the mood aligns with the actual stability-driven state, all axes unify simultaneously.
+
+### Beat Mood Declaration
+
+Each beat can optionally declare a mood — what the crossing SHOULD feel like when this beat matches:
+
+```javascript
+{
+  label: "The Spark",
+  requires: { stability: "tension", traits: { volatile: true } },
+  mood: {
+    tone: "dissonant",       // maps to GameAudio method
+    hue: "#ff6600",          // canvas color wash
+    intensity: 0.6,          // visual escalation level (0-1)
+  },
+  onMatch: "A spark of defiance ignites in the threads.",
+  onPartial: "Something smolders, but won't catch.",
+}
+```
+
+When the beat matches, two things happen:
+1. The mood layers onto the base stability effects (brief color wash, tone accent)
+2. An **alignment score** measures how many axes agree
+
+### Axis Alignment Scoring
+
+After each crossing, the system counts aligned axes:
+
+| Axis | Aligned when... |
+|------|----------------|
+| Stability | The beat required this stability and got it |
+| Mood tone | The beat's mood.tone matches the stability's natural tone |
+| Mood hue | The beat's mood.hue matches the stability's natural palette |
+| Archetype | The beat required an archetype and one emerged |
+| Cascade | The beat required cascade depth and it was met |
+| Narrative | The beat's text thematically matches (always true on match) |
+
+**Alignment ratio** = aligned axes / total axes declared in beat mood.
+
+- **Partial alignment** (< 0.5): subtle shimmer, text only
+- **Strong alignment** (0.5-0.8): color wash + tonal accent
+- **Perfect alignment** (> 0.8): "golden path" moment — all senses converge
+
+### The Golden Path
+
+A **golden moment** is a crossing where all declared axes unify — stability, music, visuals, narrative, and traits all say the same thing simultaneously. The player experiences synesthesia: the dissonant chord hits as the screen shakes as the text says "the contradiction tears through" as the traits show volatile+bright conflicting.
+
+**Progressive revelation:**
+- First golden moment in a run: subtle shimmer + brief whisper text "the threads align"
+- Second: canvas border glow, more pronounced tone
+- Third+: escalating, building to full "everything clicks" emphasis
+- The player gradually realizes: alignment isn't coincidence — it's the **system speaking**
+
+**End-of-run reveal includes:**
+- "X golden moments" — how many times all axes aligned
+- Per-epic alignment summary: which beats had perfect alignment
+
+### Projection Palettes
+
+Each projection has a sensory palette, making different projections FEEL different:
+
+```javascript
+{
+  name: "Tragedy",
+  id: "tragedy",
+  palette: {
+    baseHue: "#660033",          // dark magenta
+    escalationCurve: "logarithmic", // builds slowly then spikes
+    defaultIntensity: 0.4,
+  },
+  // ...
+}
+```
+
+When evaluating through the Tragedy projection, all visual feedback shifts toward that palette. The same crossing "sounds" and "looks" different through different projections — because the derived fields change which epic beats match, which changes which moods activate.
+
+### Why Axes, Not Features
+
+The axes are not hardcoded features — they're **fields on crossing results** that various systems read:
+- `stability` → audio system, visual system, beat matcher
+- `traits` → beat matcher, display system
+- `archetype` → codex, beat matcher, ceremony system
+- `mood` (from matched beat) → audio accent, visual color wash
+
+Adding a new axis means adding a new field and having one or more systems respond to it. The architecture is open to extension: a future "tactile" axis (controller vibration) or "spatial" axis (where on the canvas the effect appears) would just be more fields on the same data.
+
 ## Why This Works
 
 1. **Idempotent evaluation:** Same history → same epic results. No hidden state, no ordering dependency.
@@ -152,3 +246,4 @@ Beat requires `cascadeDepth: { min: 3 }` but crossing had `cascadeDepth: 2`. The
 3. **Combinatorial richness:** 12 epics × 4 projections × 4 stability levels × variable cascade depth × 22 archetypes = enormous narrative space from a small authored set.
 4. **Natural partial matches:** A 3/4 beat match isn't a special case — it's what the data IS when evaluated against the constraint.
 5. **Retroactive reinterpretation:** Unlocking a new projection re-evaluates the entire run history, revealing meaning that was always latent.
+6. **Multi-sensory convergence:** When all axes unify, the player doesn't just READ the result — they FEEL it through music, visuals, and narrative simultaneously. The "golden path" is emergent from constraint alignment, not scripted.
