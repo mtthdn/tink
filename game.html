@@ -1012,6 +1012,7 @@ const animOverlay = {
   cascadeRipple: null,   // { cx, cy, radius, maxRadius, alpha, color }
   sparkles: [],          // [{ x, y, alpha, vx, vy, size, color }]
   allHexVibrate: 0,      // 0..1 vibration intensity for paradox
+  nearMissLabel: null,   // { x, y, text, alpha, color }
 };
 
 // Stability tier visual config
@@ -1502,6 +1503,21 @@ function drawAnimOverlay() {
     ctx.restore();
   }
 
+  // Near-miss label at crossing midpoint
+  if (o.nearMissLabel) {
+    const nm = o.nearMissLabel;
+    ctx.save();
+    ctx.globalAlpha = nm.alpha;
+    ctx.font = "italic 11px 'Segoe UI', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#0a0a0f";
+    ctx.fillText(nm.text, nm.x + 1, nm.y + 1);
+    ctx.fillStyle = nm.color;
+    ctx.fillText(nm.text, nm.x, nm.y);
+    ctx.restore();
+  }
+
   // Cascade ripple
   if (o.cascadeRipple) {
     const cr = o.cascadeRipple;
@@ -1711,6 +1727,59 @@ async function runActivationAnimation(crossings) {
         tickSparkles();
       });
 
+      // --- 2d½: Near-miss ambient signal (after archetype name, before cascade) ---
+      if (cx.archetype.nearMisses && cx.archetype.nearMisses.length > 0) {
+        const bestNM = cx.archetype.nearMisses[0];
+        const strong = bestNM.ratio >= 0.75;
+        const nmTierColors = {
+          common: "#8a8a6a", uncommon: "#4a8a4a", rare: "#5a8aaa",
+          mythic: "#7a5aaa", legendary: "#b89040"
+        };
+        const nmColor = strong ? "#d4a84e" : "rgba(212, 168, 78, 0.6)";
+        const nmSparkleColor = nmTierColors[bestNM.tier] || "#8a8a6a";
+        const nmText = strong ? "Almost there..." : "Something stirs...";
+        const nmSparkleCount = strong ? 5 : 3;
+
+        // Brief color flash on the crossing hex glows
+        animOverlay.hexGlows = [
+          { cx: pxA.x, cy: pxA.y, alpha: 0, color: nmSparkleColor },
+          { cx: pxB.x, cy: pxB.y, alpha: 0, color: nmSparkleColor },
+        ];
+        await animateCustom(150, (t) => {
+          const flash = t < 0.5 ? t * 2 : 2 - t * 2;
+          for (const g of animOverlay.hexGlows) g.alpha = flash * (strong ? 0.4 : 0.2);
+          tickSparkles();
+        });
+        animOverlay.hexGlows = [];
+
+        // Subtle sparkle motes
+        spawnSparkles(midX, midY, nmSparkleColor, nmSparkleCount);
+
+        // Near-miss text fades in and out over ~1s
+        animOverlay.nearMissLabel = {
+          x: midX, y: midY + 20,
+          text: nmText,
+          alpha: 0,
+          color: nmColor,
+        };
+        // Fade in (200ms)
+        await animateCustom(200, (t) => {
+          animOverlay.nearMissLabel.alpha = t * (strong ? 0.9 : 0.6);
+          tickSparkles();
+        });
+        // Hold (400ms)
+        await animateCustom(400, (t) => {
+          animOverlay.nearMissLabel.alpha = (strong ? 0.9 : 0.6);
+          tickSparkles();
+        });
+        // Fade out (400ms)
+        await animateCustom(400, (t) => {
+          animOverlay.nearMissLabel.alpha = (strong ? 0.9 : 0.6) * (1 - t);
+          tickSparkles();
+        });
+        animOverlay.nearMissLabel = null;
+      }
+
       // --- 2e: Cascade wave if archetype has cascade traits (200ms) ---
       const cascadeTraits = Object.keys(cx.archetype.match.cascade || {});
       if (cascadeTraits.length > 0) {
@@ -1735,6 +1804,59 @@ async function runActivationAnimation(crossings) {
         if (animOverlay.stabilityLabel) animOverlay.stabilityLabel.alpha = Math.max(0, 0.7 - t);
         tickSparkles();
       });
+
+      // --- Near-miss ambient signal (no archetype matched) ---
+      if (cx.archetype.nearMisses && cx.archetype.nearMisses.length > 0) {
+        const bestNM = cx.archetype.nearMisses[0];
+        const strong = bestNM.ratio >= 0.75;
+        const nmTierColors = {
+          common: "#8a8a6a", uncommon: "#4a8a4a", rare: "#5a8aaa",
+          mythic: "#7a5aaa", legendary: "#b89040"
+        };
+        const nmColor = strong ? "#d4a84e" : "rgba(212, 168, 78, 0.6)";
+        const nmSparkleColor = nmTierColors[bestNM.tier] || "#8a8a6a";
+        const nmText = strong ? "Almost there..." : "Something stirs...";
+        const nmSparkleCount = strong ? 5 : 3;
+
+        // Brief color flash on the crossing hex glows
+        animOverlay.hexGlows = [
+          { cx: pxA.x, cy: pxA.y, alpha: 0, color: nmSparkleColor },
+          { cx: pxB.x, cy: pxB.y, alpha: 0, color: nmSparkleColor },
+        ];
+        await animateCustom(150, (t) => {
+          const flash = t < 0.5 ? t * 2 : 2 - t * 2;
+          for (const g of animOverlay.hexGlows) g.alpha = flash * (strong ? 0.4 : 0.2);
+          tickSparkles();
+        });
+        animOverlay.hexGlows = [];
+
+        // Subtle sparkle motes
+        spawnSparkles(midX, midY, nmSparkleColor, nmSparkleCount);
+
+        // Near-miss text fades in and out over ~1s
+        animOverlay.nearMissLabel = {
+          x: midX, y: midY + 20,
+          text: nmText,
+          alpha: 0,
+          color: nmColor,
+        };
+        // Fade in (200ms)
+        await animateCustom(200, (t) => {
+          animOverlay.nearMissLabel.alpha = t * (strong ? 0.9 : 0.6);
+          tickSparkles();
+        });
+        // Hold (400ms)
+        await animateCustom(400, (t) => {
+          animOverlay.nearMissLabel.alpha = (strong ? 0.9 : 0.6);
+          tickSparkles();
+        });
+        // Fade out (400ms)
+        await animateCustom(400, (t) => {
+          animOverlay.nearMissLabel.alpha = (strong ? 0.9 : 0.6) * (1 - t);
+          tickSparkles();
+        });
+        animOverlay.nearMissLabel = null;
+      }
     }
 
     // Clear overlay labels for next crossing
@@ -2259,6 +2381,7 @@ function initGame() {
   animOverlay.cascadeRipple = null;
   animOverlay.sparkles = [];
   animOverlay.allHexVibrate = 0;
+  animOverlay.nearMissLabel = null;
 
   // Clear CSS states
   const activateBtn = document.getElementById("activateBtn");
