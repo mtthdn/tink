@@ -475,6 +475,14 @@
     margin-left: 0.4rem;
     opacity: 0.6;
   }
+  .codex-btn.discovery-pulse {
+    animation: codexPulse 0.6s ease-in-out 3;
+  }
+  @keyframes codexPulse {
+    0%   { box-shadow: 0 0 4px rgba(212, 168, 78, 0.2); transform: scale(1); }
+    50%  { box-shadow: 0 0 18px rgba(212, 168, 78, 0.7); transform: scale(1.08); border-color: var(--gold); color: var(--gold); }
+    100% { box-shadow: 0 0 4px rgba(212, 168, 78, 0.2); transform: scale(1); }
+  }
 
   /* Codex overlay */
   .codex-overlay {
@@ -1224,6 +1232,8 @@ const animOverlay = {
   sparkles: [],          // [{ x, y, alpha, vx, vy, size, color }]
   allHexVibrate: 0,      // 0..1 vibration intensity for paradox
   nearMissLabel: null,   // { x, y, text, alpha, color }
+  flavorLabel: null,     // { x, y, text, alpha, color }
+  discoveryBurst: null,  // { cx, cy, radius, maxRadius, alpha, color }
 };
 
 // Stability tier visual config
@@ -1729,6 +1739,47 @@ function drawAnimOverlay() {
     ctx.restore();
   }
 
+  // Flavor label (first-discovery ceremony)
+  if (o.flavorLabel) {
+    const fl = o.flavorLabel;
+    ctx.save();
+    ctx.globalAlpha = fl.alpha;
+    ctx.font = "italic 11px 'Segoe UI', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#0a0a0f";
+    ctx.fillText(fl.text, fl.x + 1, fl.y + 1);
+    ctx.fillStyle = fl.color;
+    ctx.shadowColor = fl.color;
+    ctx.shadowBlur = 6;
+    ctx.fillText(fl.text, fl.x, fl.y);
+    ctx.restore();
+  }
+
+  // Discovery burst ring (first-discovery ceremony)
+  if (o.discoveryBurst) {
+    const db = o.discoveryBurst;
+    ctx.save();
+    ctx.globalAlpha = db.alpha;
+    ctx.strokeStyle = db.color;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = db.color;
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.arc(db.cx, db.cy, db.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    // Inner fill glow
+    const burstGrad = ctx.createRadialGradient(db.cx, db.cy, db.radius * 0.6, db.cx, db.cy, db.radius);
+    burstGrad.addColorStop(0, "rgba(212, 168, 78, 0)");
+    burstGrad.addColorStop(1, "rgba(212, 168, 78, " + (db.alpha * 0.15) + ")");
+    ctx.fillStyle = burstGrad;
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(db.cx, db.cy, db.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   // Cascade ripple
   if (o.cascadeRipple) {
     const cr = o.cascadeRipple;
@@ -1934,17 +1985,84 @@ async function runActivationAnimation(crossings) {
         alpha: 0,
         tier: cx.archetype.match.tier,
       };
-      await animateCustom(200, (t) => {
-        animOverlay.archetypeName.alpha = t;
-        tickSparkles();
-      });
 
-      // Hold archetype name visible
-      await animateCustom(300, (t) => {
-        animOverlay.archetypeName.alpha = 1 - t * 0.5;
-        if (animOverlay.stabilityLabel) animOverlay.stabilityLabel.alpha = Math.max(0, 0.7 - t);
-        tickSparkles();
-      });
+      if (isNewDiscovery) {
+        // --- First Discovery Ceremony ---
+        const fullName = cx.archetype.match.name;
+        const flavorText = cx.archetype.match.flavor || "";
+
+        // 1. Radial burst from crossing point
+        animOverlay.discoveryBurst = {
+          cx: midX, cy: midY,
+          radius: 4,
+          maxRadius: HEX_SIZE * 3,
+          alpha: 0.9,
+          color: "#d4a84e",
+        };
+        spawnSparkles(midX, midY, "#d4a84e", 12);
+        await animateCustom(400, (t) => {
+          const db = animOverlay.discoveryBurst;
+          db.radius = 4 + t * (db.maxRadius - 4);
+          db.alpha = 0.9 * (1 - t * 0.7);
+          tickSparkles();
+        });
+        animOverlay.discoveryBurst = null;
+
+        // 2. Letter-by-letter name reveal in gold
+        await animateCustom(600, (t) => {
+          const charCount = Math.ceil(t * fullName.length);
+          animOverlay.archetypeName.text = fullName.substring(0, charCount);
+          animOverlay.archetypeName.alpha = 1;
+          tickSparkles();
+        });
+
+        // 3. Flavor text fades in below
+        if (flavorText) {
+          animOverlay.flavorLabel = {
+            x: midX, y: midY + 22,
+            text: flavorText,
+            alpha: 0,
+            color: "rgba(212, 168, 78, 0.85)",
+          };
+          await animateCustom(400, (t) => {
+            animOverlay.flavorLabel.alpha = t * 0.85;
+            tickSparkles();
+          });
+        }
+
+        // 4. Hold ceremony visible (total ~1.5s with above)
+        spawnSparkles(midX, midY, "#d4a84e", 6);
+        await animateCustom(600, (t) => {
+          tickSparkles();
+        });
+
+        // 5. Pulse the codex button
+        const codexBtn = document.getElementById("codexBtn");
+        codexBtn.classList.add("discovery-pulse");
+        setTimeout(() => codexBtn.classList.remove("discovery-pulse"), 1800);
+
+        // Fade out ceremony elements
+        await animateCustom(400, (t) => {
+          animOverlay.archetypeName.alpha = 1 - t;
+          if (animOverlay.flavorLabel) animOverlay.flavorLabel.alpha = 0.85 * (1 - t);
+          if (animOverlay.stabilityLabel) animOverlay.stabilityLabel.alpha = Math.max(0, 0.7 - t);
+          tickSparkles();
+        });
+        animOverlay.flavorLabel = null;
+      } else {
+        // --- Standard animation (repeat discovery) ---
+        await animateCustom(200, (t) => {
+          animOverlay.archetypeName.alpha = t;
+          tickSparkles();
+        });
+
+        // Hold archetype name visible
+        await animateCustom(300, (t) => {
+          animOverlay.archetypeName.alpha = 1 - t * 0.5;
+          if (animOverlay.stabilityLabel) animOverlay.stabilityLabel.alpha = Math.max(0, 0.7 - t);
+          tickSparkles();
+        });
+      }
 
       // --- 2e: Cascade wave if archetype has cascade traits (200ms) ---
       const cascadeTraits = Object.keys(cx.archetype.match.cascade || {});
@@ -2773,6 +2891,8 @@ function initGame() {
   animOverlay.sparkles = [];
   animOverlay.allHexVibrate = 0;
   animOverlay.nearMissLabel = null;
+  animOverlay.flavorLabel = null;
+  animOverlay.discoveryBurst = null;
 
   // Clear CSS states
   const activateBtn = document.getElementById("activateBtn");
@@ -2786,6 +2906,7 @@ function initGame() {
   if (trayLabel) trayLabel.style.opacity = "";
   canvas.classList.remove("shake");
   document.getElementById("paradoxVignette").classList.remove("active");
+  document.getElementById("codexBtn").classList.remove("discovery-pulse");
   resultsPanel.classList.remove("fade-in");
 
   loom = new Loom();
