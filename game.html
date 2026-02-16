@@ -655,6 +655,28 @@
     line-height: 1.4;
   }
 
+  /* Wander phase UI */
+  .wander-hud {
+    display: none;
+    text-align: center;
+    margin: 0.8rem 0;
+  }
+  .wander-hud.active {
+    display: block;
+  }
+  .satchel-counter {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 1rem;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+  }
+  .satchel-counter .satchel-count {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-left: 0.3rem;
+  }
+
   @media (max-width: 500px) {
     .codex-entries { grid-template-columns: 1fr; }
     .codex-panel { padding: 1rem; }
@@ -676,9 +698,14 @@
 <h2 class="tray-label">Thread Tray</h2>
 <div class="thread-tray" id="threadTray"></div>
 
-<div class="controls">
+<div class="wander-hud" id="wanderHud">
+  <span class="satchel-counter">Satchel <span class="satchel-count" id="satchelCount">0 / 6</span></span>
+</div>
+
+<div class="controls" id="weaveControls">
   <button class="btn btn-primary" id="activateBtn">Pull the Lever</button>
   <button class="btn btn-danger" id="resetBtn">Reset Loom</button>
+  <button class="btn" id="wanderBtn">Wander</button>
   <span class="hint" id="hintText">Click a thread, then click an empty hex to place it.</span>
 </div>
 
@@ -1286,6 +1313,520 @@ const TRAIT_COLORS = {
   vast: "#7d7dba",
   emotional: "#d89b7e",
 };
+
+// ============================================================
+// WANDER PHASE — node map exploration
+// ============================================================
+
+let gamePhase = "wander"; // "wander" or "weave"
+let wanderMap = null;      // { nodes: [], edges: [] }
+let wanderPosition = null; // index into wanderMap.nodes
+let wanderSatchel = [];    // collected threads
+let wanderVisited = new Set(); // set of visited node indices
+let wanderRejectFlash = null;  // { nodeIndex, until }
+let wanderRejectRAF = null;
+
+const WANDER_NODE_TYPES = ["thread-cluster", "clue-shrine", "hazard", "rest"];
+const WANDER_NODE_COLORS = {
+  "start":          "#c8c8d8", // white
+  "exit":           "#d4a84e", // gold
+  "thread-cluster": "#5a8acc", // blue
+  "clue-shrine":    "#9b7ed8", // purple
+  "hazard":         "#d85c5c", // red
+  "rest":           "#5cb85c", // green
+};
+
+function generateNodeMap(columns, nodesPerCol) {
+  columns = columns || 5;
+  nodesPerCol = nodesPerCol || [3, 4, 3, 4, 3];
+
+  const nodes = [];
+  const edges = [];
+  const colNodes = []; // colNodes[c] = array of node indices in column c
+
+  // Column 0: single start node
+  const startIdx = 0;
+  nodes.push({ type: "start", col: 0, row: 0, visited: false });
+  colNodes.push([startIdx]);
+
+  // Interior columns
+  for (let c = 0; c < columns; c++) {
+    const count = nodesPerCol[c];
+    const col = c + 1;
+    const indices = [];
+    for (let r = 0; r < count; r++) {
+      const typeRoll = Math.random();
+      let type;
+      if (typeRoll < 0.50)      type = "thread-cluster";
+      else if (typeRoll < 0.70) type = "clue-shrine";
+      else if (typeRoll < 0.85) type = "hazard";
+      else                      type = "rest";
+      const idx = nodes.length;
+      nodes.push({ type, col, row: r, visited: false });
+      indices.push(idx);
+    }
+    colNodes.push(indices);
+  }
+
+  // Last column: single exit node
+  const exitCol = columns + 1;
+  const exitIdx = nodes.length;
+  nodes.push({ type: "exit", col: exitCol, row: 0, visited: false });
+  colNodes.push([exitIdx]);
+
+  // Connect columns: each node connects to 1-2 in next column, no crossing paths
+  for (let c = 0; c < colNodes.length - 1; c++) {
+    const srcNodes = colNodes[c];
+    const dstNodes = colNodes[c + 1];
+
+    if (srcNodes.length === 1 && dstNodes.length >= 1) {
+      // Single source connects to all destinations
+      for (const dst of dstNodes) {
+        edges.push({ from: srcNodes[0], to: dst });
+      }
+    } else if (dstNodes.length === 1) {
+      // All sources connect to single destination
+      for (const src of srcNodes) {
+        edges.push({ from: src, to: dstNodes[0] });
+      }
+    } else {
+      // Many-to-many: connect in row order, no crossing
+      // Each source gets at least 1 connection; distribute destinations across sources
+      const srcCount = srcNodes.length;
+      const dstCount = dstNodes.length;
+
+      // Assign each dst to at least one src in order
+      // Strategy: map each src to a range of dsts, ensuring coverage
+      for (let si = 0; si < srcCount; si++) {
+        // Calculate the range of destinations this source should connect to
+        const dstStart = Math.floor((si / srcCount) * dstCount);
+        const dstEnd = Math.floor(((si + 1) / srcCount) * dstCount);
+        // Ensure at least one connection
+        const actualEnd = Math.max(dstEnd, dstStart + 1);
+        for (let di = dstStart; di < actualEnd && di < dstCount; di++) {
+          edges.push({ from: srcNodes[si], to: dstNodes[di] });
+        }
+      }
+
+      // Ensure every destination has at least one incoming edge
+      for (let di = 0; di < dstCount; di++) {
+        const hasIncoming = edges.some(e => e.to === dstNodes[di]);
+        if (!hasIncoming) {
+          // Connect from nearest source (by row order)
+          const bestSrc = Math.min(di, srcCount - 1);
+          edges.push({ from: srcNodes[bestSrc], to: dstNodes[di] });
+        }
+      }
+    }
+  }
+
+  // Deduplicate edges
+  const edgeSet = new Set();
+  const uniqueEdges = [];
+  for (const e of edges) {
+    const key = e.from + ":" + e.to;
+    if (!edgeSet.has(key)) {
+      edgeSet.add(key);
+      uniqueEdges.push(e);
+    }
+  }
+
+  return { nodes, edges: uniqueEdges, colNodes };
+}
+
+function getNodePixel(node) {
+  if (!wanderMap) return { x: 0, y: 0 };
+  const totalCols = wanderMap.colNodes.length;
+  const marginX = 60;
+  const marginY = 50;
+  const usableW = canvas.width - marginX * 2;
+  const usableH = canvas.height - marginY * 2;
+  const colSpacing = usableW / Math.max(totalCols - 1, 1);
+
+  const x = marginX + node.col * colSpacing;
+
+  // Vertical centering within the column
+  const nodesInCol = wanderMap.colNodes[node.col];
+  const count = nodesInCol.length;
+  if (count === 1) {
+    return { x, y: canvas.height / 2 };
+  }
+  const rowSpacing = Math.min(usableH / Math.max(count - 1, 1), 80);
+  const totalHeight = (count - 1) * rowSpacing;
+  const startY = (canvas.height - totalHeight) / 2;
+  const nodeIdx = wanderMap.nodes.indexOf(node);
+  const rowInCol = nodesInCol.indexOf(nodeIdx);
+  const y = startY + rowInCol * rowSpacing;
+
+  return { x, y };
+}
+
+function getConnectedNodes(fromIndex) {
+  if (!wanderMap) return [];
+  const connected = [];
+  for (const e of wanderMap.edges) {
+    if (e.from === fromIndex) connected.push(e.to);
+  }
+  return connected;
+}
+
+function drawNodeMap() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!wanderMap) return;
+
+  // Background subtle gradient
+  const bgGrad = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width * 0.6);
+  bgGrad.addColorStop(0, "rgba(126, 184, 218, 0.03)");
+  bgGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const connectedToPlayer = wanderPosition !== null ? getConnectedNodes(wanderPosition) : [];
+
+  // Draw edges
+  for (const edge of wanderMap.edges) {
+    const fromNode = wanderMap.nodes[edge.from];
+    const toNode = wanderMap.nodes[edge.to];
+    const fromPx = getNodePixel(fromNode);
+    const toPx = getNodePixel(toNode);
+
+    const isAvailable = edge.from === wanderPosition && connectedToPlayer.includes(edge.to);
+    const isTraversed = wanderVisited.has(edge.from) && wanderVisited.has(edge.to);
+
+    ctx.beginPath();
+    ctx.moveTo(fromPx.x, fromPx.y);
+    ctx.lineTo(toPx.x, toPx.y);
+
+    if (isAvailable) {
+      ctx.strokeStyle = "rgba(212, 168, 78, 0.6)";
+      ctx.lineWidth = 2;
+      // Dashed line for available paths
+      ctx.setLineDash([6, 4]);
+    } else if (isTraversed) {
+      ctx.strokeStyle = "rgba(126, 184, 218, 0.3)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([]);
+    } else {
+      ctx.strokeStyle = "rgba(30, 30, 46, 0.8)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+    }
+
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Draw nodes
+  const NODE_RADIUS = 16;
+  for (let i = 0; i < wanderMap.nodes.length; i++) {
+    const node = wanderMap.nodes[i];
+    const px = getNodePixel(node);
+    const isCurrentPos = i === wanderPosition;
+    const isVisited = wanderVisited.has(i);
+    const isReachable = connectedToPlayer.includes(i);
+    const baseColor = WANDER_NODE_COLORS[node.type] || "#6e6e8e";
+
+    // Reject flash
+    if (wanderRejectFlash && wanderRejectFlash.nodeIndex === i) {
+      const elapsed = performance.now() - (wanderRejectFlash.until - 400);
+      const pulse = Math.sin(elapsed * 0.025) * 0.5 + 0.5;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(px.x, px.y, NODE_RADIUS + 4, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(216, 92, 92, " + (0.15 + pulse * 0.2) + ")";
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Player glow
+    if (isCurrentPos) {
+      ctx.save();
+      const glowGrad = ctx.createRadialGradient(px.x, px.y, NODE_RADIUS * 0.5, px.x, px.y, NODE_RADIUS * 2.5);
+      glowGrad.addColorStop(0, "rgba(212, 168, 78, 0.35)");
+      glowGrad.addColorStop(1, "rgba(212, 168, 78, 0)");
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(px.x, px.y, NODE_RADIUS * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Reachable node subtle glow
+    if (isReachable && !isCurrentPos) {
+      ctx.save();
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(px.x, px.y, NODE_RADIUS + 3, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(212, 168, 78, 0.3)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Node circle
+    ctx.beginPath();
+    ctx.arc(px.x, px.y, NODE_RADIUS, 0, Math.PI * 2);
+
+    if (isVisited && !isCurrentPos) {
+      // Dimmed visited node
+      ctx.fillStyle = "rgba(18, 18, 26, 0.7)";
+      ctx.fill();
+      ctx.strokeStyle = baseColor;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else {
+      // Unvisited or current node
+      ctx.fillStyle = isCurrentPos ? baseColor : "rgba(18, 18, 26, 0.8)";
+      ctx.fill();
+      ctx.strokeStyle = baseColor;
+      ctx.lineWidth = isCurrentPos ? 2.5 : 1.5;
+      ctx.stroke();
+    }
+
+    // Node type icon/label
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 10px 'Segoe UI', system-ui, sans-serif";
+
+    if (isVisited && !isCurrentPos) {
+      ctx.globalAlpha = 0.4;
+    }
+
+    const labelColor = isCurrentPos ? "#0a0a0f" : baseColor;
+    ctx.fillStyle = labelColor;
+
+    // Short icon labels
+    const iconMap = {
+      "start": "\u25C9",      // circle with dot
+      "exit": "\u2302",       // house/exit
+      "thread-cluster": "\u2261",  // triple bar (threads)
+      "clue-shrine": "\u2735",    // asterisk (shrine)
+      "hazard": "\u26A0",         // warning
+      "rest": "\u2618",           // shamrock (rest)
+    };
+    ctx.font = isCurrentPos ? "bold 14px serif" : "13px serif";
+    ctx.fillText(iconMap[node.type] || "?", px.x, px.y);
+    ctx.restore();
+
+    // Type label below node
+    if (!isVisited || isCurrentPos) {
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.font = "9px monospace";
+      ctx.fillStyle = isCurrentPos ? baseColor : "rgba(200, 200, 216, 0.5)";
+      const typeLabels = {
+        "start": "start",
+        "exit": "exit",
+        "thread-cluster": "threads",
+        "clue-shrine": "shrine",
+        "hazard": "hazard",
+        "rest": "rest",
+      };
+      ctx.fillText(typeLabels[node.type] || node.type, px.x, px.y + NODE_RADIUS + 4);
+      ctx.restore();
+    }
+  }
+
+  // Title at bottom
+  ctx.fillStyle = "#3a3a4a";
+  ctx.font = "italic 11px Georgia, serif";
+  ctx.textAlign = "center";
+  ctx.fillText("the winding path", canvas.width / 2, canvas.height - 12);
+}
+
+function hitTestMapNode(clientX, clientY) {
+  if (!wanderMap) return -1;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = (clientX - rect.left) * scaleX;
+  const my = (clientY - rect.top) * scaleY;
+  const NODE_RADIUS = 16;
+  const CLICK_RADIUS = NODE_RADIUS + 8; // generous click target
+
+  for (let i = 0; i < wanderMap.nodes.length; i++) {
+    const px = getNodePixel(wanderMap.nodes[i]);
+    const dist = Math.sqrt((mx - px.x) ** 2 + (my - px.y) ** 2);
+    if (dist < CLICK_RADIUS) return i;
+  }
+  return -1;
+}
+
+function triggerWanderRejectFlash(nodeIndex) {
+  wanderRejectFlash = { nodeIndex, until: performance.now() + 400 };
+  if (!wanderRejectRAF) animateWanderRejectFlash();
+}
+
+function animateWanderRejectFlash() {
+  if (!wanderRejectFlash || performance.now() > wanderRejectFlash.until) {
+    wanderRejectFlash = null;
+    wanderRejectRAF = null;
+    drawNodeMap();
+    return;
+  }
+  drawNodeMap();
+  wanderRejectRAF = requestAnimationFrame(animateWanderRejectFlash);
+}
+
+function handleMapClick(clientX, clientY) {
+  if (!wanderMap || wanderPosition === null) return;
+
+  const clickedIndex = hitTestMapNode(clientX, clientY);
+  if (clickedIndex < 0) return; // clicked empty space
+
+  // Check if the clicked node is reachable from current position
+  const connected = getConnectedNodes(wanderPosition);
+  if (!connected.includes(clickedIndex)) {
+    // Invalid move — flash red
+    triggerWanderRejectFlash(clickedIndex);
+    return;
+  }
+
+  // Move player
+  wanderPosition = clickedIndex;
+  wanderVisited.add(clickedIndex);
+  wanderMap.nodes[clickedIndex].visited = true;
+
+  // Check if reached exit
+  if (wanderMap.nodes[clickedIndex].type === "exit") {
+    // Transition to Weave phase
+    drawNodeMap();
+    setTimeout(() => startWeave(wanderSatchel), 300);
+    return;
+  }
+
+  // Update satchel counter (thread collection is Task 15, for now just mark visited)
+  updateSatchelDisplay();
+  drawNodeMap();
+}
+
+function updateSatchelDisplay() {
+  const countEl = document.getElementById("satchelCount");
+  if (countEl) {
+    countEl.textContent = wanderSatchel.length + " / 6";
+  }
+}
+
+function startWander() {
+  gamePhase = "wander";
+
+  // Generate a new map
+  wanderMap = generateNodeMap();
+  wanderPosition = 0; // start node
+  wanderSatchel = [];
+  wanderVisited = new Set([0]);
+  wanderMap.nodes[0].visited = true;
+
+  // Hide Weave UI
+  const subtitle = document.querySelector(".header .subtitle");
+  if (subtitle) subtitle.textContent = "The Winding Path";
+
+  document.querySelector(".tray-label").style.display = "none";
+  document.getElementById("threadTray").style.display = "none";
+  document.getElementById("weaveControls").style.display = "none";
+  document.getElementById("resultsPanel").style.display = "none";
+
+  // Show Wander UI
+  document.getElementById("wanderHud").classList.add("active");
+  updateSatchelDisplay();
+
+  drawNodeMap();
+}
+
+function startWeave(collectedThreads) {
+  gamePhase = "weave";
+
+  // Show Weave UI
+  const subtitle = document.querySelector(".header .subtitle");
+  if (subtitle) subtitle.textContent = "The Loom";
+
+  document.querySelector(".tray-label").style.display = "";
+  document.getElementById("threadTray").style.display = "";
+  document.getElementById("weaveControls").style.display = "";
+
+  // Hide Wander UI
+  document.getElementById("wanderHud").classList.remove("active");
+
+  // Clear wander state
+  wanderMap = null;
+  wanderPosition = null;
+
+  // Initialize the loom — track session, reset state
+  codexData.stats.runs++;
+  Codex.save(codexData);
+
+  loomLocked = false;
+  if (activationAnimRAF) {
+    cancelAnimationFrame(activationAnimRAF);
+    activationAnimRAF = null;
+  }
+  animOverlay.chargeGlow = 0;
+  animOverlay.energyPulse = null;
+  animOverlay.hexGlows = [];
+  animOverlay.stabilityLabel = null;
+  animOverlay.archetypeName = null;
+  animOverlay.cascadeRipple = null;
+  animOverlay.sparkles = [];
+  animOverlay.allHexVibrate = 0;
+  animOverlay.nearMissLabel = null;
+  animOverlay.flavorLabel = null;
+  animOverlay.discoveryBurst = null;
+
+  const activateBtn = document.getElementById("activateBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const trayEl = document.getElementById("threadTray");
+  const trayLabel = document.querySelector(".tray-label");
+  const resultsPanel = document.getElementById("resultsPanel");
+  activateBtn.classList.remove("btn-locked");
+  resetBtn.classList.remove("btn-locked");
+  trayEl.classList.remove("tray-dimmed");
+  if (trayLabel) trayLabel.style.opacity = "";
+  canvas.classList.remove("shake");
+  document.getElementById("paradoxVignette").classList.remove("active");
+  document.getElementById("codexBtn").classList.remove("discovery-pulse");
+  resultsPanel.classList.remove("fade-in");
+
+  loom = new Loom();
+  selectedTrayIndex = null;
+  lastCrossings = null;
+  resultsPanel.style.display = "none";
+
+  // If threads were collected during wander, use them; otherwise random
+  if (collectedThreads && collectedThreads.length > 0) {
+    const threads = collectedThreads.slice();
+    // Place up to 3 on loom, rest in tray
+    const toPlace = Math.min(3, threads.length);
+    const ringPositions = HEX_POSITIONS.slice(1);
+    const shuffledRing = [...ringPositions].sort(() => Math.random() - 0.5);
+
+    if (toPlace >= 1) loom.place(threads[0], 0, 0);
+    if (toPlace >= 2) loom.place(threads[1], shuffledRing[0].q, shuffledRing[0].r);
+    if (toPlace >= 3) loom.place(threads[2], shuffledRing[1].q, shuffledRing[1].r);
+
+    trayThreads = threads.slice(toPlace);
+  } else {
+    // Fallback: random threads (same as original initGame)
+    const selected = randomThreads(5);
+    const ringPositions = HEX_POSITIONS.slice(1);
+    const shuffledRing = [...ringPositions].sort(() => Math.random() - 0.5);
+
+    loom.place(selected[0], 0, 0);
+    loom.place(selected[1], shuffledRing[0].q, shuffledRing[0].r);
+    loom.place(selected[2], shuffledRing[1].q, shuffledRing[1].r);
+
+    trayThreads = [selected[3], selected[4]];
+  }
+
+  drawLoom();
+  renderTray();
+  updateHint();
+}
 
 // ============================================================
 // DRAG-AND-DROP STATE
@@ -2281,6 +2822,13 @@ function updateHint() {
 // ============================================================
 
 canvas.addEventListener("click", (e) => {
+  // Route click based on game phase
+  if (gamePhase === "wander") {
+    handleMapClick(e.clientX, e.clientY);
+    return;
+  }
+
+  // Weave phase: loom placement
   if (loomLocked) return;
   if (selectedTrayIndex === null) return;
 
@@ -2572,6 +3120,14 @@ function buildTooltipContent(threadA, threadB) {
 }
 
 canvas.addEventListener("mousemove", (e) => {
+  // Skip tooltip during Wander phase
+  if (gamePhase !== "weave") {
+    if (tooltipVisible) {
+      crossingTooltip.classList.remove("visible");
+      tooltipVisible = false;
+    }
+    return;
+  }
   if (loomLocked) {
     if (tooltipVisible) {
       crossingTooltip.classList.remove("visible");
@@ -2651,6 +3207,10 @@ canvas.addEventListener("mouseleave", () => {
 
 document.getElementById("resetBtn").addEventListener("click", () => {
   initGame();
+});
+
+document.getElementById("wanderBtn").addEventListener("click", () => {
+  startWander();
 });
 
 // ============================================================
@@ -2871,66 +3431,16 @@ updateCodexBtnCount();
 // INITIALIZATION
 // ============================================================
 
-function initGame() {
-  // Track session in codex
-  codexData.stats.runs++;
-  Codex.save(codexData);
+function initGame(phase) {
+  phase = phase || "wander";
 
-  // Unlock UI and clear animation state
-  loomLocked = false;
-  if (activationAnimRAF) {
-    cancelAnimationFrame(activationAnimRAF);
-    activationAnimRAF = null;
+  if (phase === "wander") {
+    startWander();
+    return;
   }
-  animOverlay.chargeGlow = 0;
-  animOverlay.energyPulse = null;
-  animOverlay.hexGlows = [];
-  animOverlay.stabilityLabel = null;
-  animOverlay.archetypeName = null;
-  animOverlay.cascadeRipple = null;
-  animOverlay.sparkles = [];
-  animOverlay.allHexVibrate = 0;
-  animOverlay.nearMissLabel = null;
-  animOverlay.flavorLabel = null;
-  animOverlay.discoveryBurst = null;
 
-  // Clear CSS states
-  const activateBtn = document.getElementById("activateBtn");
-  const resetBtn = document.getElementById("resetBtn");
-  const trayEl = document.getElementById("threadTray");
-  const trayLabel = document.querySelector(".tray-label");
-  const resultsPanel = document.getElementById("resultsPanel");
-  activateBtn.classList.remove("btn-locked");
-  resetBtn.classList.remove("btn-locked");
-  trayEl.classList.remove("tray-dimmed");
-  if (trayLabel) trayLabel.style.opacity = "";
-  canvas.classList.remove("shake");
-  document.getElementById("paradoxVignette").classList.remove("active");
-  document.getElementById("codexBtn").classList.remove("discovery-pulse");
-  resultsPanel.classList.remove("fade-in");
-
-  loom = new Loom();
-  selectedTrayIndex = null;
-  lastCrossings = null;
-  resultsPanel.style.display = "none";
-
-  // Pick 5 random threads
-  const selected = randomThreads(5);
-
-  // Place 3 on the loom: center + 2 random ring positions
-  const ringPositions = HEX_POSITIONS.slice(1);
-  const shuffledRing = [...ringPositions].sort(() => Math.random() - 0.5);
-
-  loom.place(selected[0], 0, 0); // center
-  loom.place(selected[1], shuffledRing[0].q, shuffledRing[0].r);
-  loom.place(selected[2], shuffledRing[1].q, shuffledRing[1].r);
-
-  // Remaining 2 go to tray
-  trayThreads = [selected[3], selected[4]];
-
-  drawLoom();
-  renderTray();
-  updateHint();
+  // Weave phase initialization (called via startWeave or directly)
+  startWeave([]);
 }
 
 // Escape to cancel drag or close codex
