@@ -445,6 +445,212 @@
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  /* Codex button */
+  .codex-btn {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1100;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .codex-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    box-shadow: 0 0 8px rgba(212, 168, 78, 0.15);
+  }
+  .codex-btn .codex-btn-count {
+    font-family: monospace;
+    font-size: 0.7rem;
+    margin-left: 0.4rem;
+    opacity: 0.6;
+  }
+
+  /* Codex overlay */
+  .codex-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 1200;
+    background: rgba(5, 5, 10, 0.85);
+    overflow-y: auto;
+    padding: 2rem 1rem;
+  }
+  .codex-overlay.open {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  /* Codex panel */
+  .codex-panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-width: 620px;
+    width: 100%;
+    padding: 1.5rem;
+    position: relative;
+  }
+  .codex-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .codex-panel-title {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 1.3rem;
+    font-weight: 300;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+  }
+  .codex-panel-progress {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+  .codex-close-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.2rem 0.6rem;
+    transition: color 0.2s, border-color 0.2s;
+    line-height: 1;
+  }
+  .codex-close-btn:hover {
+    color: var(--red);
+    border-color: var(--red);
+  }
+
+  /* Codex tier groups */
+  .codex-tier-group {
+    margin-bottom: 1.2rem;
+  }
+  .codex-tier-header {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .codex-tier-header.tier-h-common { color: var(--text-dim); }
+  .codex-tier-header.tier-h-uncommon { color: var(--green); }
+  .codex-tier-header.tier-h-rare { color: var(--accent); }
+  .codex-tier-header.tier-h-mythic { color: var(--purple); }
+  .codex-tier-header.tier-h-legendary { color: var(--gold); }
+  .codex-tier-count {
+    font-weight: 300;
+    font-size: 0.75rem;
+    opacity: 0.6;
+    margin-left: 0.5rem;
+  }
+
+  /* Codex entries */
+  .codex-entries {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .codex-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    transition: border-color 0.2s;
+  }
+  .codex-entry.discovered {
+    border-left: 3px solid;
+  }
+  .codex-entry.discovered.tier-e-common { border-left-color: var(--text-dim); }
+  .codex-entry.discovered.tier-e-uncommon { border-left-color: var(--green); }
+  .codex-entry.discovered.tier-e-rare { border-left-color: var(--accent); }
+  .codex-entry.discovered.tier-e-mythic { border-left-color: var(--purple); }
+  .codex-entry.discovered.tier-e-legendary { border-left-color: var(--gold); }
+  .codex-entry.undiscovered {
+    border-style: dashed;
+    opacity: 0.5;
+  }
+  .codex-entry-name {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+    margin-bottom: 0.15rem;
+  }
+  .codex-entry-tier {
+    font-family: monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-left: 0.3rem;
+  }
+  .codex-entry-flavor {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--text-dim);
+    line-height: 1.4;
+    margin-bottom: 0.3rem;
+  }
+  .codex-entry-unknown {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+  .codex-entry-hint {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--purple);
+    opacity: 0.8;
+    margin-top: 0.2rem;
+  }
+  .codex-entry-count {
+    font-family: monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    opacity: 0.5;
+    margin-top: 0.2rem;
+  }
+
+  /* Codex trait badges */
+  .codex-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 0.3rem;
+  }
+  .codex-trait-badge {
+    font-family: monospace;
+    font-size: 0.6rem;
+    padding: 0.08rem 0.35rem;
+    border-radius: 99px;
+    border: 1px solid;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 500px) {
+    .codex-entries { grid-template-columns: 1fr; }
+    .codex-panel { padding: 1rem; }
+  }
 </style>
 </head>
 <body>
@@ -466,6 +672,11 @@
   <button class="btn btn-primary" id="activateBtn">Pull the Lever</button>
   <button class="btn btn-danger" id="resetBtn">Reset Loom</button>
   <span class="hint" id="hintText">Click a thread, then click an empty hex to place it.</span>
+</div>
+
+<button class="codex-btn" id="codexBtn">Codex <span class="codex-btn-count" id="codexBtnCount"></span></button>
+<div class="codex-overlay" id="codexOverlay">
+  <div class="codex-panel" id="codexPanel"></div>
 </div>
 
 <div class="results-panel" id="resultsPanel" style="display: none;">
@@ -1715,6 +1926,7 @@ async function runActivationAnimation(crossings) {
         ? Object.keys(catalogEntry.required).filter(k => k !== "_minConflicts")
         : [];
       const isNewDiscovery = Codex.discover(codexData, cx.archetype.match, { requiredTraits });
+      updateCodexBtnCount();
 
       animOverlay.archetypeName = {
         x: midX, y: midY + 2,
@@ -2367,6 +2579,178 @@ const Codex = {
 let codexData = Codex.load();
 
 // ============================================================
+// CODEX UI — toggleable discovery panel
+// ============================================================
+
+const TIER_ORDER = ["common", "uncommon", "rare", "mythic", "legendary"];
+
+function traitBadgeColor(trait) {
+  let hash = 0;
+  for (let i = 0; i < trait.length; i++) {
+    hash = trait.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = ((hash % 360) + 360) % 360;
+  return { bg: "hsla(" + hue + ", 40%, 30%, 0.25)", border: "hsla(" + hue + ", 45%, 50%, 0.4)", color: "hsl(" + hue + ", 45%, 70%)" };
+}
+
+function updateCodexBtnCount() {
+  const countEl = document.getElementById("codexBtnCount");
+  if (countEl) {
+    const n = Object.keys(codexData.discovered).length;
+    countEl.textContent = n + "/" + CATALOG.length;
+  }
+}
+
+function renderCodexPanel() {
+  const panel = document.getElementById("codexPanel");
+  panel.innerHTML = "";
+
+  const discovered = Object.keys(codexData.discovered).length;
+  const total = CATALOG.length;
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "codex-panel-header";
+
+  const titleRow = document.createElement("div");
+  const title = document.createElement("div");
+  title.className = "codex-panel-title";
+  title.textContent = "Codex";
+  const progress = document.createElement("div");
+  progress.className = "codex-panel-progress";
+  progress.textContent = discovered + " of " + total + " archetypes discovered";
+  titleRow.appendChild(title);
+  titleRow.appendChild(progress);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "codex-close-btn";
+  closeBtn.innerHTML = "&#x2715;";
+  closeBtn.addEventListener("click", toggleCodex);
+
+  header.appendChild(titleRow);
+  header.appendChild(closeBtn);
+  panel.appendChild(header);
+
+  // Group by tier
+  const grouped = {};
+  for (const tier of TIER_ORDER) grouped[tier] = [];
+  for (const arch of CATALOG) {
+    if (grouped[arch.tier]) grouped[arch.tier].push(arch);
+  }
+
+  for (const tier of TIER_ORDER) {
+    const archetypes = grouped[tier];
+    if (archetypes.length === 0) continue;
+
+    const group = document.createElement("div");
+    group.className = "codex-tier-group";
+
+    const tierHeader = document.createElement("div");
+    tierHeader.className = "codex-tier-header tier-h-" + tier;
+    const discoveredInTier = archetypes.filter(a => a.name in codexData.discovered).length;
+    tierHeader.innerHTML = tier + '<span class="codex-tier-count">' + discoveredInTier + " / " + archetypes.length + "</span>";
+    group.appendChild(tierHeader);
+
+    const entries = document.createElement("div");
+    entries.className = "codex-entries";
+
+    for (const arch of archetypes) {
+      const entry = document.createElement("div");
+      const disc = codexData.discovered[arch.name];
+
+      if (disc) {
+        // Discovered entry
+        entry.className = "codex-entry discovered tier-e-" + tier;
+
+        const nameRow = document.createElement("div");
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "codex-entry-name";
+        nameSpan.textContent = arch.name;
+        const tierSpan = document.createElement("span");
+        tierSpan.className = "codex-entry-tier tier-" + tier;
+        tierSpan.textContent = tier;
+        nameRow.appendChild(nameSpan);
+        nameRow.appendChild(tierSpan);
+        entry.appendChild(nameRow);
+
+        const flavor = document.createElement("div");
+        flavor.className = "codex-entry-flavor";
+        flavor.textContent = arch.flavor;
+        entry.appendChild(flavor);
+
+        // Trait badges
+        if (disc.requiredTraits && disc.requiredTraits.length > 0) {
+          const traitsDiv = document.createElement("div");
+          traitsDiv.className = "codex-traits";
+          for (const trait of disc.requiredTraits) {
+            const badge = document.createElement("span");
+            badge.className = "codex-trait-badge";
+            const c = traitBadgeColor(trait);
+            badge.style.background = c.bg;
+            badge.style.borderColor = c.border;
+            badge.style.color = c.color;
+            badge.textContent = trait;
+            traitsDiv.appendChild(badge);
+          }
+          entry.appendChild(traitsDiv);
+        }
+
+        // Times produced
+        if (disc.timesProduced > 1) {
+          const countDiv = document.createElement("div");
+          countDiv.className = "codex-entry-count";
+          countDiv.textContent = "produced " + disc.timesProduced + "x";
+          entry.appendChild(countDiv);
+        }
+      } else {
+        // Undiscovered entry
+        entry.className = "codex-entry undiscovered";
+
+        const unknown = document.createElement("div");
+        unknown.className = "codex-entry-unknown";
+        unknown.textContent = "???";
+        entry.appendChild(unknown);
+
+        // Show hint if available
+        const hint = codexData.hints[arch.name];
+        if (hint) {
+          const hintDiv = document.createElement("div");
+          hintDiv.className = "codex-entry-hint";
+          hintDiv.textContent = hint.text;
+          entry.appendChild(hintDiv);
+        }
+      }
+
+      entries.appendChild(entry);
+    }
+
+    group.appendChild(entries);
+    panel.appendChild(group);
+  }
+
+  updateCodexBtnCount();
+}
+
+function toggleCodex() {
+  const overlay = document.getElementById("codexOverlay");
+  const isOpen = overlay.classList.contains("open");
+  if (isOpen) {
+    overlay.classList.remove("open");
+  } else {
+    renderCodexPanel();
+    overlay.classList.add("open");
+  }
+}
+
+document.getElementById("codexBtn").addEventListener("click", toggleCodex);
+
+document.getElementById("codexOverlay").addEventListener("click", function(e) {
+  if (e.target === this) toggleCodex();
+});
+
+updateCodexBtnCount();
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 
@@ -2429,10 +2813,14 @@ function initGame() {
   updateHint();
 }
 
-// Escape to cancel drag
+// Escape to cancel drag or close codex
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && dragState) {
-    cancelDrag();
+  if (e.key === "Escape") {
+    if (document.getElementById("codexOverlay").classList.contains("open")) {
+      toggleCodex();
+    } else if (dragState) {
+      cancelDrag();
+    }
   }
 });
 
