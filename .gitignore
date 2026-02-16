@@ -1,0 +1,2 @@
+# CUE module symlinks (local dev only)
+.kg/cue.mod/pkg/
