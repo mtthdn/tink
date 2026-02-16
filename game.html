@@ -79,11 +79,14 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 0.7rem 1rem;
-    cursor: pointer;
+    cursor: grab;
     transition: border-color 0.2s, transform 0.15s;
     min-width: 140px;
     flex: 1;
     max-width: 200px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
   .thread-card:hover {
     border-color: var(--accent);
@@ -268,6 +271,62 @@
   }
   .footer a { color: var(--text-dim); text-decoration: none; }
   .footer a:hover { color: var(--accent); }
+
+  /* Drag ghost */
+  .drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.75;
+    transform: translate(-50%, -50%) rotate(-2deg) scale(1.05);
+    background: var(--surface);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    min-width: 140px;
+    max-width: 200px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(212, 168, 78, 0.2);
+  }
+  .drag-ghost .card-name {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+  .drag-ghost .card-rarity {
+    font-family: monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-left: 0.4rem;
+  }
+  .drag-ghost .card-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.4rem;
+  }
+  .drag-ghost .trait-tag {
+    font-family: monospace;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 99px;
+    background: rgba(126, 184, 218, 0.1);
+    border: 1px solid rgba(126, 184, 218, 0.15);
+  }
+  .thread-card.dragging {
+    opacity: 0.3;
+    border-style: dashed;
+  }
+
+  /* Red flash on rejected drop */
+  @keyframes hex-reject-flash {
+    0% { opacity: 1; }
+    25% { opacity: 0.6; }
+    50% { opacity: 1; }
+    75% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
 </style>
 </head>
 <body>
@@ -864,6 +923,153 @@ const TRAIT_COLORS = {
 };
 
 // ============================================================
+// DRAG-AND-DROP STATE
+// ============================================================
+
+let dragState = null;     // { threadIndex, ghost, hoverHex: {q,r}|null, occupied: bool }
+let rejectFlashHex = null; // {q, r, until: timestamp} — for red flash
+let rejectFlashRAF = null;
+
+function hitTestHex(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = (clientX - rect.left) * scaleX;
+  const my = (clientY - rect.top) * scaleY;
+  for (const pos of HEX_POSITIONS) {
+    const px = hexToPixel(pos.q, pos.r);
+    const dist = Math.sqrt((mx - px.x) ** 2 + (my - px.y) ** 2);
+    if (dist < HEX_SIZE - 5) {
+      return { q: pos.q, r: pos.r, occupied: loom.grid.has(posKey(pos.q, pos.r)) };
+    }
+  }
+  return null;
+}
+
+function createGhostEl(thread) {
+  const ghost = document.createElement("div");
+  ghost.className = "drag-ghost";
+
+  const header = document.createElement("div");
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "card-name";
+  nameSpan.textContent = thread.name;
+  header.appendChild(nameSpan);
+  const raritySpan = document.createElement("span");
+  raritySpan.className = "card-rarity rarity-" + thread.rarity;
+  raritySpan.textContent = thread.rarity;
+  header.appendChild(raritySpan);
+  ghost.appendChild(header);
+
+  const traitsDiv = document.createElement("div");
+  traitsDiv.className = "card-traits";
+  for (const trait of Object.keys(thread.nature)) {
+    const tag = document.createElement("span");
+    tag.className = "trait-tag";
+    tag.textContent = trait;
+    tag.style.borderColor = TRAIT_COLORS[trait] || "rgba(126, 184, 218, 0.15)";
+    tag.style.color = TRAIT_COLORS[trait] || "#5cd8d8";
+    traitsDiv.appendChild(tag);
+  }
+  ghost.appendChild(traitsDiv);
+
+  document.body.appendChild(ghost);
+  return ghost;
+}
+
+function startDrag(threadIndex, clientX, clientY) {
+  const thread = trayThreads[threadIndex];
+  if (!thread) return;
+
+  const ghost = createGhostEl(thread);
+  ghost.style.left = clientX + "px";
+  ghost.style.top = clientY + "px";
+
+  dragState = { threadIndex, ghost, hoverHex: null, occupied: false };
+
+  // Dim the source card
+  const cards = document.querySelectorAll(".thread-card");
+  if (cards[threadIndex]) cards[threadIndex].classList.add("dragging");
+
+  updateHint();
+}
+
+function moveDrag(clientX, clientY) {
+  if (!dragState) return;
+  dragState.ghost.style.left = clientX + "px";
+  dragState.ghost.style.top = clientY + "px";
+
+  const hit = hitTestHex(clientX, clientY);
+  const prevKey = dragState.hoverHex ? posKey(dragState.hoverHex.q, dragState.hoverHex.r) : null;
+  const newKey = hit ? posKey(hit.q, hit.r) : null;
+
+  if (prevKey !== newKey || (hit && dragState.occupied !== hit.occupied)) {
+    dragState.hoverHex = hit ? { q: hit.q, r: hit.r } : null;
+    dragState.occupied = hit ? hit.occupied : false;
+    drawLoom();
+  }
+}
+
+function endDrag(clientX, clientY) {
+  if (!dragState) return;
+
+  const hit = hitTestHex(clientX, clientY);
+  const { threadIndex, ghost } = dragState;
+  const thread = trayThreads[threadIndex];
+
+  // Clean up ghost
+  ghost.remove();
+
+  // Un-dim card
+  const cards = document.querySelectorAll(".thread-card");
+  if (cards[threadIndex]) cards[threadIndex].classList.remove("dragging");
+
+  if (hit && !hit.occupied && thread) {
+    // Valid drop: place the thread
+    loom.place(thread, hit.q, hit.r);
+    trayThreads.splice(threadIndex, 1);
+    selectedTrayIndex = null;
+    lastCrossings = null;
+    document.getElementById("resultsPanel").style.display = "none";
+  } else if (hit && hit.occupied) {
+    // Rejected: red flash on the occupied cell
+    triggerRejectFlash(hit.q, hit.r);
+  }
+  // else: dropped elsewhere — cancel, thread stays in tray
+
+  dragState = null;
+  drawLoom();
+  renderTray();
+  updateHint();
+}
+
+function cancelDrag() {
+  if (!dragState) return;
+  dragState.ghost.remove();
+  const cards = document.querySelectorAll(".thread-card");
+  if (cards[dragState.threadIndex]) cards[dragState.threadIndex].classList.remove("dragging");
+  dragState = null;
+  drawLoom();
+  updateHint();
+}
+
+function triggerRejectFlash(q, r) {
+  rejectFlashHex = { q, r, until: performance.now() + 400 };
+  if (!rejectFlashRAF) animateRejectFlash();
+}
+
+function animateRejectFlash() {
+  if (!rejectFlashHex || performance.now() > rejectFlashHex.until) {
+    rejectFlashHex = null;
+    rejectFlashRAF = null;
+    drawLoom();
+    return;
+  }
+  drawLoom();
+  rejectFlashRAF = requestAnimationFrame(animateRejectFlash);
+}
+
+// ============================================================
 // CANVAS RENDERER
 // ============================================================
 
@@ -980,6 +1186,33 @@ function drawLoom() {
     }
   }
 
+  // Drag hover highlight
+  if (dragState && dragState.hoverHex) {
+    const hPx = hexToPixel(dragState.hoverHex.q, dragState.hoverHex.r);
+    if (dragState.occupied) {
+      // Red highlight for occupied cell
+      drawHexagon(hPx.x, hPx.y, HEX_SIZE - 2, "rgba(216, 92, 92, 0.15)", "#d85c5c", 2.5);
+    } else {
+      // Green/accent glow for valid empty cell
+      drawHexagon(hPx.x, hPx.y, HEX_SIZE - 2, "rgba(126, 184, 218, 0.12)", "#7eb8da", 2.5);
+      // Outer glow ring
+      ctx.save();
+      ctx.shadowColor = "rgba(126, 184, 218, 0.4)";
+      ctx.shadowBlur = 12;
+      drawHexagon(hPx.x, hPx.y, HEX_SIZE + 1, null, "rgba(126, 184, 218, 0.3)", 1.5);
+      ctx.restore();
+    }
+  }
+
+  // Reject flash overlay
+  if (rejectFlashHex) {
+    const elapsed = performance.now() - (rejectFlashHex.until - 400);
+    const pulse = Math.sin(elapsed * 0.025) * 0.5 + 0.5; // oscillate 0..1
+    const rPx = hexToPixel(rejectFlashHex.q, rejectFlashHex.r);
+    const alpha = 0.1 + pulse * 0.2;
+    drawHexagon(rPx.x, rPx.y, HEX_SIZE - 2, "rgba(216, 92, 92, " + alpha + ")", "#d85c5c", 2.5);
+  }
+
   // Title above loom
   ctx.fillStyle = "#3a3a4a";
   ctx.font = "italic 11px Georgia, serif";
@@ -1028,14 +1261,52 @@ function renderTray() {
     }
     card.appendChild(traitsDiv);
 
-    card.addEventListener("click", () => {
-      if (selectedTrayIndex === idx) {
-        selectedTrayIndex = null;
-      } else {
-        selectedTrayIndex = idx;
+    // Drag-and-drop via pointer events
+    let dragStartX = 0, dragStartY = 0, isDragging = false;
+    const DRAG_THRESHOLD = 5;
+
+    card.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return; // left button only
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      isDragging = false;
+      card.setPointerCapture(e.pointerId);
+    });
+
+    card.addEventListener("pointermove", (e) => {
+      if (!card.hasPointerCapture(e.pointerId)) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      if (!isDragging && Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+        isDragging = true;
+        startDrag(idx, e.clientX, e.clientY);
       }
-      renderTray();
-      updateHint();
+      if (isDragging) {
+        moveDrag(e.clientX, e.clientY);
+      }
+    });
+
+    card.addEventListener("pointerup", (e) => {
+      if (isDragging) {
+        endDrag(e.clientX, e.clientY);
+        isDragging = false;
+      } else {
+        // Click behavior: toggle selection
+        if (selectedTrayIndex === idx) {
+          selectedTrayIndex = null;
+        } else {
+          selectedTrayIndex = idx;
+        }
+        renderTray();
+        updateHint();
+      }
+    });
+
+    card.addEventListener("pointercancel", () => {
+      if (isDragging) {
+        cancelDrag();
+        isDragging = false;
+      }
     });
 
     tray.appendChild(card);
@@ -1044,10 +1315,12 @@ function renderTray() {
 
 function updateHint() {
   const hint = document.getElementById("hintText");
-  if (selectedTrayIndex !== null) {
+  if (dragState) {
+    hint.textContent = "Drop " + trayThreads[dragState.threadIndex].name + " on an empty hex.";
+  } else if (selectedTrayIndex !== null) {
     hint.textContent = "Click an empty hex on the loom to place " + trayThreads[selectedTrayIndex].name + ".";
   } else if (trayThreads.length > 0) {
-    hint.textContent = "Click a thread, then click an empty hex to place it.";
+    hint.textContent = "Drag a thread to the loom, or click to select then click a hex.";
   } else {
     hint.textContent = "All threads placed. Pull the Lever to activate!";
   }
@@ -1072,7 +1345,8 @@ canvas.addEventListener("click", (e) => {
     if (dist < HEX_SIZE - 5) {
       const key = posKey(pos.q, pos.r);
       if (loom.grid.has(key)) {
-        // Already occupied
+        // Already occupied — flash red
+        triggerRejectFlash(pos.q, pos.r);
         return;
       }
 
@@ -1273,6 +1547,18 @@ function initGame() {
   renderTray();
   updateHint();
 }
+
+// Escape to cancel drag
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && dragState) {
+    cancelDrag();
+  }
+});
+
+// Prevent scrolling on touch devices during drag
+document.addEventListener("touchmove", (e) => {
+  if (dragState) e.preventDefault();
+}, { passive: false });
 
 // Start
 initGame();
