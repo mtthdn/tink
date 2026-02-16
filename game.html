@@ -981,9 +981,11 @@
     border: 1px solid var(--gold);
     border-radius: 12px;
     padding: 2rem 2.5rem;
-    max-width: 500px;
+    max-width: 550px;
     width: 90%;
     text-align: center;
+    max-height: 80vh;
+    overflow-y: auto;
   }
   .run-summary-panel h2 {
     color: var(--gold);
@@ -1005,6 +1007,102 @@
     display: flex;
     gap: 0.8rem;
     justify-content: center;
+  }
+
+  /* Epic reveal */
+  .epic-reveal-heading {
+    color: var(--gold);
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+  }
+  .epic-reveal-subtext {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    font-style: italic;
+    margin-bottom: 1rem;
+  }
+  .golden-count {
+    color: var(--gold);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    animation: goldenPulse 2s ease-in-out infinite;
+  }
+  @keyframes goldenPulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; text-shadow: 0 0 8px rgba(212, 168, 78, 0.5); }
+  }
+  .epic-entry {
+    background: rgba(30, 30, 45, 0.6);
+    border: 1px solid rgba(100, 100, 140, 0.3);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    margin: 0.6rem 0;
+    text-align: left;
+  }
+  .epic-entry-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .epic-tier-badge {
+    font-size: 0.65rem;
+    font-weight: normal;
+    margin-left: 0.5rem;
+    opacity: 0.8;
+  }
+  .epic-entry-text {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--text-dim);
+    margin-top: 0.3rem;
+  }
+  .epic-entry-projection {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-top: 0.3rem;
+    opacity: 0.6;
+  }
+  .epic-golden-count {
+    font-size: 0.7rem;
+    color: var(--gold);
+    margin-top: 0.2rem;
+  }
+  .epic-progress-bar {
+    height: 4px;
+    background: rgba(100, 100, 140, 0.3);
+    border-radius: 2px;
+    margin-top: 0.4rem;
+    overflow: hidden;
+  }
+  .epic-progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+  .epic-beat-list {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 0.3rem;
+  }
+  .epic-beat-matched {
+    color: var(--green);
+  }
+  .epic-beat-missed {
+    color: var(--text-dim);
+    opacity: 0.5;
+  }
+  .epic-hidden-count {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    font-style: italic;
+    margin-top: 1rem;
+    opacity: 0.5;
+  }
+  .epic-projection-teaser {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    font-style: italic;
+    margin-top: 0.5rem;
+    opacity: 0.6;
   }
 
   /* Results cycle header */
@@ -3070,7 +3168,32 @@ function nextCycle() {
 
 function endRun() {
   runState.active = false;
-  showRunSummary();
+
+  // Update projection unlock state based on codex discoveries
+  const discovered = Object.keys(codexData.discovered).length;
+  for (const proj of PROJECTIONS) {
+    if (!proj.unlocked && discovered >= proj.unlocksAt) {
+      proj.unlocked = true;
+    }
+  }
+
+  // Evaluate epics against run history
+  const evalResult = evaluateRun(runState.weavingHistory, PROJECTIONS, EPICS);
+
+  // Record completed epics in codex
+  codexData.epics = codexData.epics || {};
+  for (const r of evalResult.results) {
+    if (r.complete) {
+      codexData.epics[r.epic.name] = {
+        tier: r.epic.tier,
+        projection: r.epic.projection,
+        completedAt: Date.now(),
+      };
+    }
+  }
+  Codex.save(codexData);
+
+  showEpicReveal(evalResult);
 }
 
 function updateCycleIndicator() {
@@ -3083,19 +3206,34 @@ function updateCycleIndicator() {
   el.innerHTML = 'Cycle <span class="cycle-current">' + runState.cycle + '</span> / ' + runState.maxCycles;
 }
 
-function showRunSummary() {
+function showEpicReveal(evalResult) {
   const overlay = document.getElementById("runSummaryOverlay");
   const panel = document.getElementById("runSummaryPanel");
+  panel.innerHTML = "";
 
+  // Section 1: Atmospheric heading
+  const heading = document.createElement("div");
+  heading.className = "epic-reveal-heading";
+  heading.textContent = "The tapestry speaks\u2026";
+  panel.appendChild(heading);
+
+  const subtext = document.createElement("div");
+  subtext.className = "epic-reveal-subtext";
+  subtext.textContent = "The threads settle, and the loom reveals what was woven.";
+  panel.appendChild(subtext);
+
+  // Section 2: Golden moments
+  if (evalResult.goldenMoments > 0) {
+    const golden = document.createElement("div");
+    golden.className = "golden-count";
+    golden.textContent = "\u2726 The threads aligned " + evalResult.goldenMoments + " time" + (evalResult.goldenMoments !== 1 ? "s" : "");
+    panel.appendChild(golden);
+  }
+
+  // Section 3: Run stats (preserved from original)
   const uniqueArchetypes = [...new Set(runState.producedArchetypes.map(a => a.name))];
   const discovered = Object.keys(codexData.discovered).length;
   const completionPct = Math.round((discovered / CATALOG.length) * 100);
-
-  panel.innerHTML = "";
-
-  const heading = document.createElement("h2");
-  heading.textContent = "Run Complete";
-  panel.appendChild(heading);
 
   const stats = [
     { label: "Cycles completed", value: runState.cycle },
@@ -3112,7 +3250,6 @@ function showRunSummary() {
     panel.appendChild(div);
   }
 
-  // List unique archetypes produced
   if (uniqueArchetypes.length > 0) {
     const listDiv = document.createElement("div");
     listDiv.style.cssText = "margin-top: 0.8rem; font-size: 0.8rem; color: #6e6e8e; font-style: italic;";
@@ -3120,6 +3257,121 @@ function showRunSummary() {
     panel.appendChild(listDiv);
   }
 
+  // Section 4: Completed epics
+  const completed = evalResult.results.filter(r => r.complete);
+  for (const r of completed) {
+    const card = document.createElement("div");
+    card.className = "epic-entry";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "epic-entry-name tier-" + r.epic.tier;
+    nameEl.textContent = r.epic.name;
+    const badge = document.createElement("span");
+    badge.className = "epic-tier-badge tier-" + r.epic.tier;
+    badge.textContent = "[" + r.epic.tier + "]";
+    nameEl.appendChild(badge);
+    card.appendChild(nameEl);
+
+    const textEl = document.createElement("div");
+    textEl.className = "epic-entry-text";
+    textEl.textContent = r.epic.onComplete;
+    card.appendChild(textEl);
+
+    const projEl = document.createElement("div");
+    projEl.className = "epic-entry-projection";
+    projEl.textContent = "seen through " + r.projection.name;
+    card.appendChild(projEl);
+
+    if (r.goldenCount > 0) {
+      const goldenEl = document.createElement("div");
+      goldenEl.className = "epic-golden-count";
+      goldenEl.textContent = "\u2726 " + r.goldenCount + " golden moment" + (r.goldenCount !== 1 ? "s" : "");
+      card.appendChild(goldenEl);
+    }
+
+    panel.appendChild(card);
+  }
+
+  // Section 5: Partial epics (ratio >= 0.33 and < 1)
+  const partials = evalResult.results.filter(r => r.ratio >= 0.33 && r.ratio < 1);
+  for (const r of partials) {
+    const card = document.createElement("div");
+    card.className = "epic-entry";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "epic-entry-name tier-" + r.epic.tier;
+    nameEl.textContent = r.epic.name;
+    const badge = document.createElement("span");
+    badge.className = "epic-tier-badge tier-" + r.epic.tier;
+    badge.textContent = "[" + r.epic.tier + "]";
+    nameEl.appendChild(badge);
+    card.appendChild(nameEl);
+
+    // Progress bar
+    const barOuter = document.createElement("div");
+    barOuter.className = "epic-progress-bar";
+    const barFill = document.createElement("div");
+    barFill.className = "epic-progress-fill";
+    barFill.style.width = Math.round(r.ratio * 100) + "%";
+    // Use the tier color for the fill
+    const tierColorVar = {
+      common: "var(--text-dim)", uncommon: "var(--green)",
+      rare: "var(--accent)", mythic: "var(--purple)", legendary: "var(--gold)"
+    };
+    barFill.style.background = tierColorVar[r.epic.tier] || "var(--text-dim)";
+    barOuter.appendChild(barFill);
+    card.appendChild(barOuter);
+
+    const textEl = document.createElement("div");
+    textEl.className = "epic-entry-text";
+    textEl.textContent = r.epic.onPartial;
+    card.appendChild(textEl);
+
+    // Beat list
+    const beatList = document.createElement("div");
+    beatList.className = "epic-beat-list";
+    for (const m of r.matched) {
+      const beatEl = document.createElement("div");
+      if (m.crossing) {
+        beatEl.className = "epic-beat-matched";
+        beatEl.textContent = "\u2713 " + m.beat.label + " \u2014 " + m.beat.onMatch;
+      } else {
+        beatEl.className = "epic-beat-missed";
+        beatEl.textContent = "\u00b7 " + m.beat.label + " \u2014 " + m.beat.onPartial;
+      }
+      beatList.appendChild(beatEl);
+    }
+    card.appendChild(beatList);
+
+    panel.appendChild(card);
+  }
+
+  // Section 6: Hidden count
+  const hidden = evalResult.results.filter(r => r.ratio === 0);
+  if (hidden.length > 0) {
+    const hiddenEl = document.createElement("div");
+    hiddenEl.className = "epic-hidden-count";
+    hiddenEl.textContent = hidden.length + " more epic" + (hidden.length !== 1 ? "s" : "") + " remained hidden in the tapestry";
+    panel.appendChild(hiddenEl);
+  }
+
+  // Section 7: Projection teaser
+  const lockedProjections = PROJECTIONS.filter(p => !p.unlocked);
+  if (lockedProjections.length > 0) {
+    const currentDiscovered = Object.keys(codexData.discovered).length;
+    const closest = lockedProjections.reduce((a, b) =>
+      Math.abs(a.unlocksAt - currentDiscovered) < Math.abs(b.unlocksAt - currentDiscovered) ? a : b
+    );
+    const remaining = closest.unlocksAt - currentDiscovered;
+    if (remaining > 0) {
+      const teaser = document.createElement("div");
+      teaser.className = "epic-projection-teaser";
+      teaser.textContent = "A new way of seeing awaits\u2026 (" + remaining + " more discover" + (remaining !== 1 ? "ies" : "y") + ")";
+      panel.appendChild(teaser);
+    }
+  }
+
+  // Section 8: New Run button
   const actions = document.createElement("div");
   actions.className = "run-summary-actions";
 
